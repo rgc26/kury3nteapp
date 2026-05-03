@@ -1,0 +1,198 @@
+/// Pre-built energy saving tips in Taglish (Filipino-English mix)
+/// Used as fallback when Gemini AI is not available
+final List<Map<String, String>> energySavingTips = [
+  {
+    'title': 'I-set ang aircon sa 25°C',
+    'tip': 'Ang bawat degree na ibinaba mo sa aircon ay nagdadagdag ng 3-5% sa kuryente. I-set sa 25°C — komportable pa rin at makatipid ka ng hanggang 15% sa cooling cost.',
+    'appliance': 'aircon',
+    'savings': '15%',
+  },
+  {
+    'title': 'Gamitin ang timer ng aircon',
+    'tip': 'I-set ang aircon timer na mag-off pagkatapos ng 2-3 oras. Sa gabi, malamig na ang kwarto kaya hindi na kailangan buong gabi.',
+    'appliance': 'aircon',
+    'savings': '30%',
+  },
+  {
+    'title': 'Linisin ang aircon filter monthly',
+    'tip': 'Ang maruming filter ay nagpapahirap sa aircon na mag-cool — mas mataas ang konsumo. Linisin every 2 weeks para efficient ang cooling.',
+    'appliance': 'aircon',
+    'savings': '10%',
+  },
+  {
+    'title': 'Inverter ref = half the cost',
+    'tip': 'Kung lumang ref ang gamit mo (10+ years old), mag-upgrade sa inverter ref. Halos kalahati lang ang kuryente — mababawi mo ang gastos sa 2 years.',
+    'appliance': 'ref',
+    'savings': '50%',
+  },
+  {
+    'title': 'Huwag buksan-sara ang ref',
+    'tip': 'Bawat bukas ng ref, lumalabas ang malamig na hangin at mag-wo-work harder ang compressor. Isipin mo muna kung ano kukunin bago buksan.',
+    'appliance': 'ref',
+    'savings': '5%',
+  },
+  {
+    'title': 'LED bulbs over incandescent',
+    'tip': 'Ang isang LED bulb (10W) ay same brightness sa 60W incandescent. Palitan lahat ng ilaw — makatipid ka ng 80% sa lighting.',
+    'appliance': 'lighting',
+    'savings': '80%',
+  },
+  {
+    'title': 'I-off ang standby na appliances',
+    'tip': 'Ang TV, PC, charger na naka-plug kahit off ay kumakain pa rin ng "phantom power" — hanggang 10% ng total bill mo. I-unplug o gumamit ng power strip.',
+    'appliance': 'general',
+    'savings': '10%',
+  },
+  {
+    'title': 'Fan muna bago aircon',
+    'tip': 'Sa 30°C pababa, kaya na ng electric fan. Ang fan ay 75W lang vs 1000W ng aircon — 13x na tipid! Gumamit ng electric fan pag kaya.',
+    'appliance': 'fan',
+    'savings': '90%',
+  },
+  {
+    'title': 'Mag-plantsa ng sabay-sabay',
+    'tip': 'Ang flat iron ay 1000W — isa sa pinaka-matakaw sa kuryente. Mag-plantsa ng isang beses lang sa isang linggo at sabay-sabayin lahat ng damit.',
+    'appliance': 'iron',
+    'savings': '20%',
+  },
+  {
+    'title': 'Rice cooker: cook then unplug',
+    'tip': 'Pagkatapos magluto ng kanin, i-unplug agad. Huwag i-warm buong araw — gumamit ng insulated container (thermos pot) para mainit pa rin.',
+    'appliance': 'rice cooker',
+    'savings': '15%',
+  },
+  {
+    'title': 'Laptop over desktop',
+    'tip': 'Ang laptop ay 65W lang vs 300W ng desktop PC. Kung hindi naman heavy gaming, gumamit ng laptop para makatipid ng 75% sa computing.',
+    'appliance': 'computer',
+    'savings': '75%',
+  },
+  {
+    'title': 'Washing tip: full load only',
+    'tip': 'Huwag maghugas ng konting damit lang. Mag-full load para mabawasan ang bilang ng wash cycles. Same kuryente ang kalahating load at full load.',
+    'appliance': 'washing machine',
+    'savings': '25%',
+  },
+  {
+    'title': 'Solar phone charging trick',
+    'tip': 'Kung may maliit na solar panel ka (kahit 20W), kaya na nito i-charge ang phone at powerbank sa araw. Zero kuryente cost!',
+    'appliance': 'phone',
+    'savings': '100%',
+  },
+  {
+    'title': 'Paint your roof white',
+    'tip': 'Ang white roof ay nagre-reflect ng sunlight at nagpapababa ng indoor temp ng 2-3°C. Mas mababa ang aircon usage — libre ang paint tip!',
+    'appliance': 'aircon',
+    'savings': '10%',
+  },
+  {
+    'title': 'Gumamit ng curtains at blinds',
+    'tip': 'Ang direct sunlight sa bintana ay nagpapainit ng kwarto. Gumamit ng thick curtains lalo na sa hapon — nabawasan ang load ng aircon.',
+    'appliance': 'aircon',
+    'savings': '8%',
+  },
+  {
+    'title': 'Water heater schedule',
+    'tip': 'Huwag patuloy ang water heater. I-on lang 30 minutes bago maligo, then i-off. Timer outlet ang best solution dito.',
+    'appliance': 'water heater',
+    'savings': '40%',
+  },
+  {
+    'title': 'Peak vs off-peak (TOU rate)',
+    'tip': 'Kung may Time-of-Use meter ka, gamitin ang mabibigat na appliances (washing machine, plantsa) sa off-peak hours (10PM-6AM) para mas mura ang rate.',
+    'appliance': 'general',
+    'savings': '20%',
+  },
+  {
+    'title': 'Clean your ref coils',
+    'tip': 'Ang dusty condenser coils sa likod ng ref ay nagpapataas ng power consumption. I-vacuum every 6 months para efficient.',
+    'appliance': 'ref',
+    'savings': '10%',
+  },
+  {
+    'title': 'Natural ventilation sa umaga',
+    'tip': 'Sa umaga (6-9AM) at gabi (after 6PM), buksan ang bintana at pinto para sa natural na hangin. I-off ang aircon at fan.',
+    'appliance': 'general',
+    'savings': '15%',
+  },
+  {
+    'title': 'Microwave vs oven',
+    'tip': 'Ang microwave ay mas energy-efficient kaysa electric oven para sa reheating — 50% less energy at mas mabilis pa. Use microwave for small portions.',
+    'appliance': 'microwave',
+    'savings': '50%',
+  },
+];
+
+/// Bayanihan community post seed data
+final List<Map<String, String>> seedBayanihanPosts = [
+  {
+    'category': 'generator',
+    'title': 'Generator available — 3kVA Honda',
+    'description': 'Nagpapahiram ng generator sa mga kapitbahay namin sa Brgy. Fairview. 3kVA Honda, kaya mag-ref, fan, at ilaw. May sariling diesel, libre lang. PM sa number ko.',
+    'location': 'Fairview, Quezon City',
+    'availability': '6PM - 10PM daily',
+  },
+  {
+    'category': 'generator',
+    'title': 'Genset for rent — ₱500/day',
+    'description': '5kVA generator, kasama na delivery within Makati/Taguig area. ₱500/day, diesel mo na. Good for aircon + ref + lights.',
+    'location': 'Makati City',
+    'availability': 'Available now',
+  },
+  {
+    'category': 'charging',
+    'title': 'Free charging at our sari-sari store',
+    'description': 'May kuryente pa kami (solar powered). Puwede mag-charge ng phone for free sa tindahan namin. Max 2 hours per phone para marami makapag-charge.',
+    'location': 'Brgy. Malhacan, Meycauayan, Bulacan',
+    'availability': '8AM - 8PM',
+  },
+  {
+    'category': 'charging',
+    'title': 'Charging hub — St. Peter Parish',
+    'description': 'Bukas ang simbahan para sa charging. May generator ang parish. Dalhin ang sariling charger. Puwede rin mag-rest dito habang nag-charge.',
+    'location': 'Brgy. Poblacion, Dasmariñas, Cavite',
+    'availability': '7AM - 6PM',
+  },
+  {
+    'category': 'fuelPool',
+    'title': 'Group fuel run to Shell Balintawak',
+    'description': 'Mag-group tayo bukas ng umaga para sabay-sabay sa Shell Balintawak (bukas pa daw). Mas safe at mas organized. Meet-up sa 7-Eleven Quirino Highway 6AM.',
+    'location': 'Novaliches, Quezon City',
+    'availability': 'Tomorrow 6AM',
+  },
+  {
+    'category': 'fuelPool',
+    'title': 'Carpool to Petron Alabang',
+    'description': 'May slot pa sa van namin (3 seats). Pupunta sa Petron Alabang na open. Share gas lang. Text if interested.',
+    'location': 'Las Piñas to Alabang',
+    'availability': 'Today 2PM',
+  },
+  {
+    'category': 'businessSos',
+    'title': '☕ Café open — WiFi + power available!',
+    'description': 'Brew & Blend Café is OPEN! May kuryente kami (genset). Free WiFi at charging while you order. Iced coffee starts at ₱89.',
+    'location': 'Shaw Blvd, Mandaluyong',
+    'availability': '9AM - 9PM',
+  },
+  {
+    'category': 'businessSos',
+    'title': 'Laundry shop — may power!',
+    'description': 'Power Wash Laundry still operating. May generator kami. Self-service ₱40/load, full service ₱80/load. WiFi available.',
+    'location': 'Brgy. Ugong, Pasig City',
+    'availability': '7AM - 7PM',
+  },
+  {
+    'category': 'generator',
+    'title': 'Inverter + battery setup — sharing power',
+    'description': 'May 3kW inverter at 200Ah battery bank kami (solar charged). Puwede mag-charge ng powerbank, laptop, phone. Tara sa bahay namin.',
+    'location': 'Brgy. Sapang Palay, SJDM, Bulacan',
+    'availability': '9AM - 5PM (may solar)',
+  },
+  {
+    'category': 'charging',
+    'title': 'Barangay Hall — emergency charging',
+    'description': 'Bukas ang Barangay Hall para sa emergency phone charging. Generator provided by LGU. Bring your own charger. Priority: senior citizens at PWD.',
+    'location': 'Brgy. Batasan Hills, Quezon City',
+    'availability': '24/7 during brownout',
+  },
+];
