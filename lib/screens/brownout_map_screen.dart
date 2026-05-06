@@ -69,6 +69,21 @@ class _BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTicker
       body: StreamBuilder<List<OutageReport>>(
         stream: _firebaseService.getOutagesStream(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: AppColors.danger, size: 48),
+                  const SizedBox(height: 16),
+                  Text('Error loading map data: ${snapshot.error}', textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  ElevatedButton(onPressed: () => setState(() {}), child: const Text('Retry'))
+                ],
+              ),
+            );
+          }
+
           final _outages = snapshot.data ?? [];
           final noP = _outages.where((o) => o.status == OutageStatus.nopower).length;
           final sched = _outages.where((o) => o.status == OutageStatus.scheduled).length;
@@ -114,45 +129,50 @@ class _BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTicker
             // Top stats (Aligned Left, next to Menu)
             Positioned(top: MediaQuery.of(context).padding.top + 8, left: 60, right: 16, child: Align(
               alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withAlpha(180),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withAlpha(50)),
-                  boxShadow: [BoxShadow(color: Colors.black.withAlpha(100), blurRadius: 10)]
-                ),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    _statItem('🔴', noP, 'Confirmed', AppColors.danger),
-                    _divider(),
-                    _statItem('🟡', unv, 'Unverified', AppColors.warning),
-                    _divider(),
-                    
-                    if (sched > 0)
-                      PopupMenuButton<OutageReport>(
-                        position: PopupMenuPosition.under,
-                        offset: const Offset(0, 10),
-                        onSelected: (o) {
-                          _mapController.move(o.location, 16);
-                          setState(() => _selected = o);
-                        },
-                        itemBuilder: (ctx) => _outages
-                          .where((o) => o.status == OutageStatus.scheduled)
-                          .map((o) => PopupMenuItem(
-                            value: o,
-                            child: Text(o.barangay ?? 'Official', style: const TextStyle(fontSize: 12)),
-                          )).toList(),
-                        child: _statItem('🔵', sched, 'Official', Colors.blue, isDropdown: true),
-                      )
-                    else
-                      _statItem('🔵', sched, 'Official', Colors.blue),
-                      
-                    _divider(),
-                    _statItem('🟢', rest, 'Restored', AppColors.success),
-                  ]),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha(180),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withAlpha(50)),
+                      boxShadow: [BoxShadow(color: Colors.black.withAlpha(100), blurRadius: 10)]
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        _statItem('🔴', noP, 'Confirmed', AppColors.danger),
+                        _divider(),
+                        _statItem('🟡', unv, 'Unverified', AppColors.warning),
+                        _divider(),
+                        
+                        if (sched > 0)
+                          PopupMenuButton<OutageReport>(
+                            position: PopupMenuPosition.under,
+                            offset: const Offset(0, 10),
+                            onSelected: (o) {
+                              _mapController.move(o.location, 16);
+                              setState(() => _selected = o);
+                            },
+                            itemBuilder: (ctx) => _outages
+                              .where((o) => o.status == OutageStatus.scheduled)
+                              .map((o) => PopupMenuItem(
+                                value: o,
+                                child: Text(o.barangay ?? 'Official', style: const TextStyle(fontSize: 12)),
+                              )).toList(),
+                            child: _statItem('🔵', sched, 'Official', Colors.blue, isDropdown: true),
+                          )
+                        else
+                          _statItem('🔵', sched, 'Official', Colors.blue),
+                          
+                        _divider(),
+                        _statItem('🟢', rest, 'Restored', AppColors.success),
+                      ]),
+                    ),
+                  ),
+                ],
               ),
             )),
             
@@ -510,18 +530,36 @@ class _BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTicker
                       location: blurredLoc, 
                       status: OutageStatus.unverified, 
                       reportedAt: DateTime.now(), 
-                      areaName: targetPin?.areaName ?? 'Brgy. ${brgyController.text}', 
+                      areaName: (brgyController.text.isNotEmpty && brgyController.text != 'Unknown') 
+                        ? 'Brgy. ${brgyController.text}' 
+                        : (targetPin?.areaName ?? 'Manual Report'), 
                       barangay: brgyController.text.isNotEmpty ? brgyController.text : targetPin?.barangay,
                       notes: notes
                     );
-                try {
-                  await _firebaseService.submitReport(r);
-                  if (mounted) Navigator.pop(ctx);
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Brownout reported! Salamat! 🙏')));
-                } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error saving to Firebase: $e'), backgroundColor: AppColors.danger));
-                }
-              },
+
+                    try {
+                      await _firebaseService.submitReport(r);
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('✅ Brownout reported! Salamat! 🙏'),
+                            backgroundColor: AppColors.success,
+                          )
+                        );
+                      }
+                    } catch (e) {
+                      setModalState(() => isSubmitting = false);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('❌ Error: $e'), 
+                            backgroundColor: AppColors.danger
+                          )
+                        );
+                      }
+                    }
+                  },
               icon: isSubmitting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send), 
               label: Text(isSubmitting ? 'Verifying Location...' : 'I-submit'),
               style: ElevatedButton.styleFrom(

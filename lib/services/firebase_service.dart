@@ -101,21 +101,35 @@ class FirebaseService {
   /// Listen to active outages (Community: last 24h | Official: Always)
   Stream<List<OutageReport>> getOutagesStream() {
     final limitDate = DateTime.now().subtract(const Duration(hours: 24));
+    print('DEBUG: Fetching outages since $limitDate');
     
     return _db.collection('outages')
-      // Fetch all reports and filter in the map function to allow complex logic 
-      // like showing official schedules regardless of time
       .snapshots()
       .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          final data = doc.data();
-          data['id'] = doc.id;
-          return OutageReport.fromJson(data);
-        }).where((report) {
+        print('DEBUG: Received snapshot with ${snapshot.docs.length} documents');
+        final reports = snapshot.docs.map((doc) {
+          try {
+            final data = doc.data();
+            data['id'] = doc.id;
+            final report = OutageReport.fromJson(data);
+            
+            // Log each report for debugging
+            print('DEBUG: Found report ${report.id} at ${report.location.latitude}, ${report.location.longitude}, status: ${report.status.name}, reportedAt: ${report.reportedAt}');
+            
+            return report;
+          } catch (e) {
+            print('DEBUG: Stream error parsing document ${doc.id}: $e');
+            return null;
+          }
+        })
+        .whereType<OutageReport>()
+        .where((report) {
           // Rule: Show if it's an Official Scheduled advisory OR it's a recent community report
           if (report.status == OutageStatus.scheduled) return true;
           return report.reportedAt.isAfter(limitDate);
         }).toList();
+        
+        return reports;
       });
   }
 
@@ -133,70 +147,45 @@ class FirebaseService {
       });
   }
 
-  /// Submit a new brownout report
+  /// Submit a new brownout report (Direct Write Version for Reliability)
   Future<void> submitReport(OutageReport report) async {
-    try {
-      final uid = currentUser?.uid;
-      if (uid == null) return; // Must be logged in
+    final uid = currentUser?.uid;
+    if (uid == null) {
+      throw Exception('Hindi ka naka-login. Please sign in muna.');
+    }
 
-      // Check if there is an existing unverified/nopower report within 500m
-      final existingQuery = await _db.collection('outages')
-        .where('status', whereIn: [OutageStatus.unverified.name, OutageStatus.nopower.name])
-        .get();
-        
-      bool joinedExisting = false;
+    // Check if the user already has an active report at this general location
+    // (This prevents accidental double-reporting while we have clustering disabled)
+    
+    try {
+      final docRef = _db.collection('outages').doc();
       final userWeight = currentUserTrust.voteWeight;
       
-      for (var doc in existingQuery.docs) {
-        final existingData = doc.data();
-        final existingLoc = LatLng(existingData['lat'], existingData['lng']);
-        
-        const distance = Distance();
-        final distInMeters = distance.as(LengthUnit.Meter, report.location, existingLoc);
-        
-        // If within 500m, group this report into the existing one
-        if (distInMeters <= 500) {
-          joinedExisting = true;
-          // Prevent double voting
-          final reporters = List<String>.from(existingData['reporters'] ?? []);
-          if (!reporters.contains(uid)) {
-            await _db.collection('outages').doc(doc.id).update({
-              'upvotes': FieldValue.increment(userWeight),
-              'reporters': FieldValue.arrayUnion([uid]),
-            });
-          }
-          break; // joined one, done
-        }
+      OutageStatus initialStatus = OutageStatus.unverified;
+      if (userWeight >= 3) {
+        initialStatus = OutageStatus.nopower;
       }
       
-      // If no existing cluster found within 500m, create a new one
-      if (!joinedExisting) {
-        final docRef = _db.collection('outages').doc(); // Auto-generate ID
-        
-        // Initial status depends on user trust
-        OutageStatus initialStatus = OutageStatus.unverified;
-        if (userWeight >= 3) {
-          initialStatus = OutageStatus.nopower; // Bayani can auto-confirm
-        }
-        
-        final newReport = OutageReport(
-          id: docRef.id,
-          location: report.location,
-          status: initialStatus,
-          source: 'crowdsource',
-          reportedAt: DateTime.now(),
-          areaName: report.areaName,
-          barangay: report.barangay,
-          notes: report.notes,
-          upvotes: userWeight,
-          reporters: [uid],
-        );
-        
-        await docRef.set(newReport.toJson());
-      }
+      final data = {
+        'id': docRef.id,
+        'lat': report.location.latitude,
+        'lng': report.location.longitude,
+        'status': initialStatus.name,
+        'source': 'crowdsource',
+        'reportedAt': FieldValue.serverTimestamp(),
+        'areaName': report.areaName ?? 'Unknown Location',
+        'barangay': report.barangay,
+        'notes': report.notes,
+        'upvotes': userWeight,
+        'restoredVotes': 0,
+        'isVerified': false,
+        'reporters': [uid],
+        'restorers': [],
+      };
+      
+      await docRef.set(data);
     } catch (e) {
-      print('Error saving report: $e');
-      rethrow;
+      throw Exception('Failed to save report: $e');
     }
   }
 

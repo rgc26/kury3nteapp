@@ -1,4 +1,5 @@
 import 'package:latlong2/latlong.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum OutageStatus { unverified, nopower, scheduled, restored }
 
@@ -69,21 +70,53 @@ class OutageReport {
     'restorers': restorers,
   };
 
-  factory OutageReport.fromJson(Map<String, dynamic> json) => OutageReport(
-    id: json['id'],
-    location: LatLng(json['lat'], json['lng']),
-    status: OutageStatus.values.firstWhere((e) => e.name == json['status'], orElse: () => OutageStatus.unverified),
-    source: json['source'] ?? 'crowdsource',
-    reportedAt: DateTime.parse(json['reportedAt']),
-    restoredAt: json['restoredAt'] != null ? DateTime.parse(json['restoredAt']) : null,
-    areaName: json['areaName'],
-    barangay: json['barangay'],
-    city: json['city'],
-    upvotes: json['upvotes'] ?? 1,
-    restoredVotes: json['restoredVotes'] ?? 0,
-    notes: json['notes'],
-    isVerified: json['isVerified'] ?? false,
-    reporters: List<String>.from(json['reporters'] ?? []),
-    restorers: List<String>.from(json['restorers'] ?? []),
-  );
+  factory OutageReport.fromJson(Map<String, dynamic> json) {
+    try {
+      DateTime parseDate(dynamic date) {
+        if (date == null) return DateTime.now(); // Fallback for local sync
+        if (date is Timestamp) return date.toDate();
+        if (date is String) {
+          try {
+            return DateTime.parse(date);
+          } catch (e) {
+            return DateTime.now();
+          }
+        }
+        return DateTime.now();
+      }
+
+      return OutageReport(
+        id: json['id'] ?? '',
+        location: LatLng(
+          (json['lat'] ?? 0.0).toDouble(), 
+          (json['lng'] ?? 0.0).toDouble()
+        ),
+        status: OutageStatus.values.firstWhere(
+          (e) => e.name == json['status'], 
+          orElse: () => OutageStatus.unverified
+        ),
+        source: json['source'] ?? 'crowdsource',
+        reportedAt: parseDate(json['reportedAt']),
+        restoredAt: json['restoredAt'] != null ? parseDate(json['restoredAt']) : null,
+        areaName: json['areaName'] ?? 'Unknown Location',
+        barangay: json['barangay'],
+        city: json['city'],
+        upvotes: json['upvotes'] ?? 1,
+        restoredVotes: json['restoredVotes'] ?? 0,
+        notes: json['notes'],
+        isVerified: json['isVerified'] ?? false,
+        reporters: List<String>.from(json['reporters'] ?? []),
+        restorers: List<String>.from(json['restorers'] ?? []),
+      );
+    } catch (e) {
+      print('Error parsing OutageReport: $e');
+      return OutageReport(
+        id: 'error',
+        location: const LatLng(0, 0),
+        status: OutageStatus.unverified,
+        reportedAt: DateTime.now(),
+        areaName: 'Parse Error',
+      );
+    }
+  }
 }
