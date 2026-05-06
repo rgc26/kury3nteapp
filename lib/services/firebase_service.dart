@@ -140,10 +140,17 @@ class FirebaseService {
       .snapshots()
       .map((snapshot) {
         return snapshot.docs.map((doc) {
-          final data = doc.data();
-          data['id'] = doc.id;
-          return OutageReport.fromJson(data);
-        }).toList();
+          try {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return OutageReport.fromJson(data);
+          } catch (e) {
+            print('History Stream error parsing document ${doc.id}: $e');
+            return null;
+          }
+        })
+        .whereType<OutageReport>()
+        .toList();
       });
   }
 

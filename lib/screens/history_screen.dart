@@ -53,6 +53,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 }
                 
                 final allReports = snapshot.data ?? [];
+                
+                // Sort by date descending in UI as well to handle mixed types in Firestore
+                allReports.sort((a, b) => b.reportedAt.compareTo(a.reportedAt));
+
                 final filtered = allReports.where((r) {
                   final matchesSearch = r.barangay?.toLowerCase().contains(_searchQuery) ?? true;
                   return matchesSearch;
