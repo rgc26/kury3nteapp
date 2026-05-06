@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  flutter_map: ^7.0.2
+  flutter_map: ^8.3.0
   latlong2: ^0.9.1
   http: ^1.2.2
   html: ^0.15.5
@@ -22,6 +22,11 @@ dependencies:
   intl: ^0.20.2
   geolocator: ^13.0.2
   geolocator_web: ^4.1.1
+  firebase_core: ^4.7.0
+  cloud_firestore: ^6.3.0
+  firebase_auth: ^6.4.0
+  google_sign_in: ^7.2.0
+  flutter_map_cancellable_tile_provider: ^3.0.2
 
 dev_dependencies:
   flutter_test:

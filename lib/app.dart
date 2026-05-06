@@ -7,9 +7,12 @@ import 'screens/energy_audit_screen.dart';
 import 'screens/alerts_screen.dart';
 import 'screens/bayanihan_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/history_screen.dart';
+import 'services/firebase_service.dart';
 
 class AppShell extends StatefulWidget {
   final StorageService storage;
+  static final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
   
   const AppShell({super.key, required this.storage});
 
@@ -30,12 +33,40 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 300),
     );
     _screens = [
-      BrownoutMapScreen(storage: widget.storage),
+      const BrownoutMapScreen(),
       FuelTrackerScreen(storage: widget.storage),
       EnergyAuditScreen(storage: widget.storage),
       AlertsScreen(storage: widget.storage),
       BayanihanScreen(storage: widget.storage),
+      const HistoryScreen(),
     ];
+    
+    // Check for Device Lock security
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkDeviceLock();
+    });
+  }
+
+  Future<void> _checkDeviceLock() async {
+    try {
+      final deviceId = await widget.storage.getDeviceId();
+      final firebaseService = FirebaseService();
+      await firebaseService.registerDevice(deviceId);
+    } catch (e) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Row(children: [Icon(Icons.lock, color: AppColors.danger), SizedBox(width: 8), Text('Security Alert')]),
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Understood')),
+            ],
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -46,20 +77,82 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final firebaseService = FirebaseService();
+    final user = firebaseService.currentUser;
+
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: child,
-        ),
-        child: IndexedStack(
-          key: ValueKey(_currentIndex),
-          index: _currentIndex,
-          children: _screens,
+      key: AppShell.scaffoldKey,
+      drawer: Drawer(
+        backgroundColor: AppColors.surface,
+        child: Column(
+          children: [
+            UserAccountsDrawerHeader(
+              decoration: const BoxDecoration(color: AppColors.primary),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Text(user?.displayName?[0] ?? user?.email?[0] ?? '?', 
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
+              ),
+              accountName: Text(user?.displayName ?? 'Kuryente User', style: const TextStyle(fontWeight: FontWeight.bold)),
+              accountEmail: Text(user?.email ?? 'No Email'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.map_outlined),
+              title: const Text('Live Map'),
+              onTap: () {
+                setState(() => _currentIndex = 0);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.history, color: AppColors.primary),
+              title: const Text('Report History', style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () {
+                setState(() => _currentIndex = 5);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: const Text('Profile'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text('Settings'),
+              onTap: () => Navigator.pop(context),
+            ),
+            const Divider(color: AppColors.border),
+            const Spacer(),
+            ListTile(
+              leading: const Icon(Icons.logout, color: AppColors.danger),
+              title: const Text('Logout', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold)),
+              onTap: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Logout?'),
+                    content: const Text('Are you sure you want to sign out?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Logout', style: TextStyle(color: AppColors.danger))),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  await firebaseService.signOut();
+                }
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
         ),
       ),
-      bottomNavigationBar: Container(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: _currentIndex >= 5 ? null : Container(
         decoration: const BoxDecoration(
           border: Border(
             top: BorderSide(color: AppColors.border, width: 1),

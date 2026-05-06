@@ -4,6 +4,8 @@ import '../models/meralco_schedule.dart';
 import '../models/app_models.dart';
 import '../services/meralco_scraper.dart';
 import '../services/storage_service.dart';
+import '../services/firebase_service.dart';
+import '../app.dart';
 
 class AlertsScreen extends StatefulWidget {
   final StorageService storage;
@@ -14,6 +16,7 @@ class AlertsScreen extends StatefulWidget {
 
 class _AlertsScreenState extends State<AlertsScreen> with SingleTickerProviderStateMixin {
   final _scraper = MeralcoScraper();
+  final _firebaseService = FirebaseService();
   List<MeralcoSchedule> _schedules = [];
   List<AlertArea> _alerts = [];
   List<WatchlistArea> _watchlist = [];
@@ -36,12 +39,24 @@ class _AlertsScreenState extends State<AlertsScreen> with SingleTickerProviderSt
         _scraper.fetchAlertAreas(),
         widget.storage.getWatchlist(),
       ]);
+      
+      final schedules = results[0] as List<MeralcoSchedule>;
+      
       setState(() {
-        _schedules = results[0] as List<MeralcoSchedule>;
+        _schedules = schedules;
         _alerts = results[1] as List<AlertArea>;
         _watchlist = results[2] as List<WatchlistArea>;
         _loading = false;
       });
+
+      // SYNC: Push these official Meralco schedules to the Map as "Official Scheduled" markers
+      final synced = await _firebaseService.syncOfficialSchedules(schedules);
+      if (synced > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('⚡ Sync: Added $synced official schedules to map!'), backgroundColor: AppColors.primary),
+        );
+      }
+      
     } catch (e) {
       setState(() { _loading = false; _error = 'Failed to load Meralco data. Check connection.'; });
     }
@@ -51,6 +66,10 @@ class _AlertsScreenState extends State<AlertsScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => AppShell.scaffoldKey.currentState?.openDrawer(),
+        ),
         title: const Row(children: [Text('🔔 ', style: TextStyle(fontSize: 22)), Text('Smart Alerts')]),
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData)],
         bottom: TabBar(controller: _tabCtrl, tabs: const [

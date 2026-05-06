@@ -123,4 +123,16 @@ class StorageService {
   Future<void> saveSettings(Map<String, dynamic> settings) async {
     await _prefs.setString(_settingsKey, json.encode(settings));
   }
+
+  // --- Device Lock ---
+  Future<String> getDeviceId() async {
+    const key = 'device_unique_id';
+    String? id = _prefs.getString(key);
+    if (id == null) {
+      // Generate a simple unique ID for web/demo
+      id = 'dev_${DateTime.now().millisecondsSinceEpoch}_${(1000 + (DateTime.now().microsecond % 9000))}';
+      await _prefs.setString(key, id);
+    }
+    return id;
+  }
 }
