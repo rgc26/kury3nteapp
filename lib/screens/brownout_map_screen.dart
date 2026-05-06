@@ -37,9 +37,15 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
     super.initState();
     _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
     _initFirebase();
-    // Automatically fetch real GPS location when the map opens
+    // Automatically fetch real GPS location and "Wake Up" map
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestRealLocation();
+      // Nudge the map to prevent "Gray Screen" on web load
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          _mapController.move(_mapController.camera.center, _mapController.camera.zoom);
+        }
+      });
     });
   }
   
@@ -106,10 +112,12 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
               onTap: (_, __) => setState(() => _selected = null),
             ), children: [
               TileLayer(
-                // Use Google Maps Standard Tiles (lyrs=m) or Hybrid (lyrs=y)
-                urlTemplate: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-                userAgentPackageName: 'com.example.app',
+                // Use multiple Google subdomains to speed up loading and prevent gray gaps
+                urlTemplate: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+                subdomains: const ['0', '1', '2', '3'],
+                userAgentPackageName: 'org.kuryente.app',
                 retinaMode: true,
+                maxZoom: 20,
               ),
               
               if (_showHeatmap) CircleLayer(circles: _outages.where((o) => o.status == OutageStatus.nopower)
@@ -349,6 +357,7 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
             final uid = _firebaseService.currentUser?.uid;
             final hasReported = uid != null && o.reporters.contains(uid);
             final hasRestored = uid != null && o.restorers.contains(uid);
+            final isTooOld = DateTime.now().difference(o.reportedAt).inHours >= 24;
 
             if (o.status == OutageStatus.unverified || o.status == OutageStatus.nopower) {
               return Row(
@@ -356,9 +365,9 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
                   if (o.status == OutageStatus.unverified)
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: hasReported ? null : () => _report(o),
-                        icon: Icon(hasReported ? Icons.check : Icons.add, size: 16),
-                        label: Text(hasReported ? 'You reported' : 'Me too'),
+                        onPressed: (hasReported || isTooOld) ? null : () => _report(o),
+                        icon: Icon(isTooOld ? Icons.timer_off : (hasReported ? Icons.check : Icons.add), size: 16),
+                        label: Text(isTooOld ? 'Expired' : (hasReported ? 'You reported' : 'Me too')),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.warning,
                           disabledForegroundColor: AppColors.textMuted,
@@ -368,9 +377,9 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
                   if (o.status == OutageStatus.unverified) const SizedBox(width: 8),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: hasRestored ? null : () => _kuryenteNa(o),
-                      icon: Icon(hasRestored ? Icons.check : Icons.lightbulb, size: 16),
-                      label: Text(hasRestored ? 'Voted Restored' : 'Kuryente Na!'),
+                      onPressed: (hasRestored || isTooOld) ? null : () => _kuryenteNa(o),
+                      icon: Icon(isTooOld ? Icons.timer_off : (hasRestored ? Icons.check : Icons.lightbulb), size: 16),
+                      label: Text(isTooOld ? 'Expired' : (hasRestored ? 'Voted Restored' : 'Kuryente Na!')),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success, 
                         foregroundColor: Colors.white,
