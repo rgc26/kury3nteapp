@@ -9,18 +9,20 @@ import 'screens/bayanihan_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/history_screen.dart';
 import 'services/firebase_service.dart';
+import 'models/outage_report.dart';
 
 class AppShell extends StatefulWidget {
   final StorageService storage;
   static final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+  static final GlobalKey<AppShellState> shellKey = GlobalKey<AppShellState>();
   
   const AppShell({super.key, required this.storage});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  State<AppShell> createState() => AppShellState();
 }
 
-class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
+class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late final List<Widget> _screens;
   late AnimationController _fabAnimController;
@@ -33,7 +35,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 300),
     );
     _screens = [
-      const BrownoutMapScreen(),
+      BrownoutMapScreen(key: BrownoutMapScreen.mapStateKey),
       FuelTrackerScreen(storage: widget.storage),
       EnergyAuditScreen(storage: widget.storage),
       AlertsScreen(storage: widget.storage),
@@ -73,6 +75,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void dispose() {
     _fabAnimController.dispose();
     super.dispose();
+  }
+
+  void jumpToReport(OutageReport report) {
+    setState(() => _currentIndex = 0);
+    // Give the map screen time to build if it was not in the stack (IndexedStack handles this)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      BrownoutMapScreen.mapStateKey.currentState?.moveToLocation(report.location, report);
+    });
   }
 
   @override

@@ -10,12 +10,15 @@ import '../services/firebase_service.dart';
 import '../app.dart';
 
 class BrownoutMapScreen extends StatefulWidget {
+  static final GlobalKey<BrownoutMapScreenState> mapStateKey = GlobalKey<BrownoutMapScreenState>();
+  
   const BrownoutMapScreen({super.key});
+  
   @override
-  State<BrownoutMapScreen> createState() => _BrownoutMapScreenState();
+  State<BrownoutMapScreen> createState() => BrownoutMapScreenState();
 }
 
-class _BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerProviderStateMixin {
+class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
   final FirebaseService _firebaseService = FirebaseService();
   
@@ -43,6 +46,13 @@ class _BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTicker
   Future<void> _initFirebase() async {
     await _firebaseService.init();
     if (mounted) setState(() {});
+  }
+
+  void moveToLocation(LatLng location, OutageReport? report) {
+    _mapController.move(location, 16);
+    if (report != null) {
+      setState(() => _selected = report);
+    }
   }
 
   @override
@@ -465,13 +475,14 @@ class _BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTicker
                 
                 const SizedBox(height: 16),
                 
-                // Auto-fetched Barangay Display (Editable with Validation)
+                // Auto-fetched Barangay Display (Locked if joining an existing report)
                 TextField(
                   controller: brgyController,
+                  enabled: targetPin == null, // Disable if it's a "Me Too" report
                   decoration: InputDecoration(
-                    labelText: 'Barangay Name',
+                    labelText: targetPin == null ? 'Barangay Name' : 'Barangay (Locked for Confirmation)',
                     prefixIcon: const Icon(Icons.location_city, size: 20),
-                    suffixIcon: isLoadingBrgy ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))) : null,
+                    suffixIcon: (isLoadingBrgy && targetPin == null) ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))) : null,
                   ),
                 ),
                 

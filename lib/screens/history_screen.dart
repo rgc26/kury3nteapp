@@ -93,24 +93,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         borderRadius: BorderRadius.circular(12), 
                         side: const BorderSide(color: AppColors.border),
                       ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: statusColor.withAlpha(40),
-                          child: Icon(statusIcon, color: statusColor, size: 20),
-                        ),
-                        title: Text(report.barangay ?? 'Unknown Area', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(dateStr, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                            if (report.notes != null && report.notes!.isNotEmpty) 
-                              Text('\"${report.notes}\"', style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
-                          ],
-                        ),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: statusColor.withAlpha(40), borderRadius: BorderRadius.circular(8)),
-                          child: Text(report.status.name.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.bold)),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          AppShell.shellKey.currentState?.jumpToReport(report);
+                        },
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: statusColor.withAlpha(40),
+                            child: Icon(statusIcon, color: statusColor, size: 20),
+                          ),
+                          title: Text(report.barangay ?? 'Unknown Area', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(dateStr, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                              if (report.notes != null && report.notes!.isNotEmpty) 
+                                Text('\"${report.notes}\"', style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
+                            ],
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: statusColor.withAlpha(40), borderRadius: BorderRadius.circular(8)),
+                            child: Text(report.status.name.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.bold)),
+                          ),
                         ),
                       ),
                     );
