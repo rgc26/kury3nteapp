@@ -41,6 +41,7 @@ class BayanihanPost {
   final String authorId;
   final String authorName;
   final List<String> interestedUserIds;
+  final List<String> salamatUserIds;
   final int commentCount;
 
   BayanihanPost({
