@@ -74,9 +74,6 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
     super.initState();
     _initializeDoeDate();
     
-    // ABSOLUTE INITIALIZATION
-    _stations = _getStaticMocks();
-    
     _loadStations();
     _requestRealLocation().then((_) => _loadStations());
     _fetchDoePrices();
@@ -141,12 +138,13 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
       final lon = _userGps.longitude;
       final radius = 5000;
       final query = '[out:json];(node["amenity"="fuel"](around:$radius,$lat,$lon);way["amenity"="fuel"](around:$radius,$lat,$lon);relation["amenity"="fuel"](around:$radius,$lat,$lon););out center;';
-      final url = Uri.parse('https://overpass-api.de/api/interpreter?data=${Uri.encodeComponent(query)}');
+      final proxyUrl = 'https://api.allorigins.win/get?url=${Uri.encodeComponent('https://overpass-api.de/api/interpreter?data=${Uri.encodeComponent(query)}')}';
       
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
+      final response = await http.get(Uri.parse(proxyUrl)).timeout(const Duration(seconds: 15));
       
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final content = json.decode(response.body)['contents'];
+        final data = json.decode(content);
         final List elements = data['elements'] ?? [];
         
         if (elements.isEmpty) {
@@ -263,17 +261,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         leading: IconButton(icon: const Icon(Icons.menu, color: Colors.white), onPressed: () => AppShell.scaffoldKey.currentState?.openDrawer()),
-        title: Row(
-          children: [
-            const Text('Bayanihan Fuel Tracker', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
-              child: const Text('V2 - HARDENED', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
+        title: const Text('Bayanihan Fuel Tracker', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(icon: const Icon(Icons.refresh, color: AppColors.primary), onPressed: _loadStations),
         ],
@@ -311,8 +299,6 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           return Stack(children: [
             _buildMap(filteredStations),
             
-            // DEBUG COUNTER (HIDDEN)
-            Positioned(top: 5, left: 5, child: Text('DP: ${filteredStations.length}', style: const TextStyle(color: Colors.white10, fontSize: 8))),
             // TOP CONTROLS
             Positioned(top: 10, left: 10, right: 10, child: Row(children: [
               Container(
