@@ -142,58 +142,66 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           'relation["amenity"="fuel"](around:$radius,$lat,$lon);'
           ');out center;';
       
-      final overpassUrl = 'https://overpass-api.de/api/interpreter?data=${Uri.encodeComponent(query)}';
+      // Strategy 1: Try multiple Overpass mirrors directly (Overpass often supports CORS)
+      final mirrors = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://lz4.overpass-api.de/api/interpreter',
+      ];
       
       debugPrint('🔍 Fetching real stations near ($lat, $lon)...');
-      
-      // Try multiple strategies: direct first, then proxies
       String? jsonBody;
-      
-      // Strategy 1: Direct call (Overpass API supports CORS)
-      try {
-        debugPrint('📡 Trying direct Overpass API...');
-        final response = await http.get(Uri.parse(overpassUrl))
-            .timeout(const Duration(seconds: 15));
-        if (response.statusCode == 200 && response.body.startsWith('{')) {
-          jsonBody = response.body;
-          debugPrint('✅ Direct Overpass API worked!');
-        }
-      } catch (e) {
-        debugPrint('⚠️ Direct failed: $e');
-      }
-      
-      // Strategy 2: corsproxy.io
-      if (jsonBody == null) {
+
+      for (var mirror in mirrors) {
+        if (jsonBody != null) break;
         try {
-          debugPrint('📡 Trying corsproxy.io...');
-          final proxyUrl = 'https://corsproxy.io/?${Uri.encodeComponent(overpassUrl)}';
-          final response = await http.get(Uri.parse(proxyUrl))
-              .timeout(const Duration(seconds: 15));
+          final url = '$mirror?data=${Uri.encodeComponent(query)}';
+          debugPrint('📡 Trying direct $mirror...');
+          final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
           if (response.statusCode == 200 && response.body.startsWith('{')) {
             jsonBody = response.body;
-            debugPrint('✅ corsproxy.io worked!');
+            debugPrint('✅ Direct $mirror worked!');
           }
         } catch (e) {
-          debugPrint('⚠️ corsproxy.io failed: $e');
+          debugPrint('⚠️ Direct mirror failed: $e');
         }
       }
       
-      // Strategy 3: allorigins.win (wrapped JSON)
+      // Strategy 2: Try with proxies if direct mirrors failed
       if (jsonBody == null) {
-        try {
-          debugPrint('📡 Trying allorigins.win...');
-          final proxyUrl = 'https://api.allorigins.win/get?url=${Uri.encodeComponent(overpassUrl)}';
-          final response = await http.get(Uri.parse(proxyUrl))
-              .timeout(const Duration(seconds: 15));
-          if (response.statusCode == 200) {
-            final decoded = json.decode(response.body);
-            if (decoded['contents'] != null && decoded['contents'].toString().startsWith('{')) {
-              jsonBody = decoded['contents'];
-              debugPrint('✅ allorigins.win worked!');
+        final proxies = [
+          'https://corsproxy.io/?',
+          'https://api.allorigins.win/get?url=',
+        ];
+        
+        // Use the primary mirror for proxy calls
+        final primaryMirror = mirrors[0];
+        final targetUrl = '$primaryMirror?data=${Uri.encodeComponent(query)}';
+
+        for (var proxy in proxies) {
+          if (jsonBody != null) break;
+          try {
+            debugPrint('📡 Trying proxy: $proxy...');
+            final finalUrl = '$proxy${Uri.encodeComponent(targetUrl)}';
+            final response = await http.get(Uri.parse(finalUrl)).timeout(const Duration(seconds: 15));
+            
+            if (response.statusCode == 200) {
+              if (proxy.contains('allorigins')) {
+                final decoded = json.decode(response.body);
+                if (decoded['contents'] != null && decoded['contents'].toString().startsWith('{')) {
+                  jsonBody = decoded['contents'];
+                }
+              } else if (response.body.startsWith('{')) {
+                jsonBody = response.body;
+              }
+              
+              if (jsonBody != null) {
+                debugPrint('✅ Proxy $proxy worked!');
+              }
             }
+          } catch (e) {
+            debugPrint('⚠️ Proxy $proxy failed: $e');
           }
-        } catch (e) {
-          debugPrint('⚠️ allorigins.win failed: $e');
         }
       }
       
@@ -201,7 +209,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
         debugPrint('❌ All fetch strategies failed');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('⚠️ Could not fetch stations. Check your internet and tap refresh.'), backgroundColor: Colors.orange));
+            const SnackBar(content: Text('⚠️ Service busy. Please wait a moment and tap refresh.'), backgroundColor: Colors.orange));
         }
         return;
       }
