@@ -422,7 +422,7 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
                       return;
                     }
                     setState(() {
-                      _appliances.add(Appliance(name: name.trim(), icon: icon, wattage: wattage, defaultWattage: wattage, isSelected: true, hoursPerDay: 4));
+                      _appliances.add(Appliance(name: name.trim(), icon: icon, wattage: wattage, defaultWattage: wattage, isSelected: true, hoursPerDay: 1));
                     });
                     Navigator.pop(ctx);
                   },
@@ -830,7 +830,7 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
                       wattage: data['wattage'],
                       defaultWattage: data['wattage'],
                       isSelected: true,
-                      hoursPerDay: 4,
+                      hoursPerDay: 1,
                     ));
                   });
                   Navigator.pop(ctx);

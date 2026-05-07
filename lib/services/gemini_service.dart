@@ -79,14 +79,18 @@ Estimated monthly bill: ₱${estimatedMonthlyBill.toStringAsFixed(0)}.
 
     try {
       final prompt = '''
-Identify the home appliance in this image. You are an expert energy auditor in the Philippines.
-Return a JSON object with:
-"name": A concise name (e.g., "Gaming Laptop", "Inverter Ref", "LED TV").
-"wattage": Typical Meralco-standard wattage (int). Be accurate (e.g. Laptop is 45-65W, LED TV is 50-100W).
-"icon_key": One of these keys ONLY: "ac", "tv", "ref", "fan", "wash", "cook", "pc", "other".
+You are a highly accurate Home Appliance Scanner for an energy audit app in the Philippines.
+Identify the main appliance in this image. 
 
-If multiple items are present, identify the most prominent one. 
-Response MUST be ONLY the JSON object.
+Rules:
+1. Identify common items: Electric Fan, Laptop, TV, Refrigerator, Aircon, Rice Cooker, etc.
+2. If it's a fan, call it "Electric Fan".
+3. Return a JSON object with:
+"name": Descriptive name (e.g., "Standard Electric Fan").
+"wattage": Typical Meralco wattage in Watts (int).
+"icon_key": One of: "ac", "tv", "ref", "fan", "wash", "cook", "pc", "other".
+
+Response MUST be ONLY the JSON object. No extra text.
 ''';
 
       debugPrint('Gemini: Starting image analysis... (Bytes: ${imageBytes.length})');
