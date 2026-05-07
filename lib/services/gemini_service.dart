@@ -9,6 +9,7 @@ import '../data/energy_tips.dart';
 /// Falls back to pre-built tips when no API key is available.
 class GeminiService {
   GenerativeModel? _model;
+  GenerativeModel? _visionModel;
   String? _apiKey;
 
   GeminiService() {
@@ -27,6 +28,9 @@ class GeminiService {
 
     if (finalKey != null && finalKey.isNotEmpty) {
       configure(finalKey);
+      debugPrint('GeminiService: API key loaded successfully (${finalKey.substring(0, 8)}...)');
+    } else {
+      debugPrint('GeminiService: WARNING - No API key found! Image scan will not work.');
     }
   }
 
@@ -34,6 +38,7 @@ class GeminiService {
 
   void configure(String apiKey) {
     _apiKey = apiKey;
+    // Text model with low temperature for tips
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
       apiKey: apiKey,
@@ -41,6 +46,14 @@ class GeminiService {
         temperature: 0.1,
         topP: 0.95,
         topK: 40,
+      ),
+    );
+    // Vision model with higher temperature for image recognition
+    _visionModel = GenerativeModel(
+      model: 'gemini-1.5-flash',
+      apiKey: apiKey,
+      generationConfig: GenerationConfig(
+        temperature: 0.4,
       ),
     );
   }
@@ -80,7 +93,10 @@ Estimated monthly bill: ₱${estimatedMonthlyBill.toStringAsFixed(0)}.
 
   /// Analyze an image of an appliance and suggest name, wattage, and icon.
   Future<Map<String, dynamic>?> analyzeApplianceImage(List<int> imageBytes) async {
-    if (!isConfigured || _model == null) return null;
+    if (!isConfigured || _visionModel == null) {
+      debugPrint('Gemini Scan Error: Service not configured. isConfigured=$isConfigured, visionModel=${_visionModel != null}');
+      return null;
+    }
 
     try {
       final prompt = '''
@@ -110,7 +126,7 @@ Return ONLY a JSON object:
         return null;
       }
 
-      final response = await _model!.generateContent([
+      final response = await _visionModel!.generateContent([
         Content.multi([
           TextPart(prompt),
           DataPart('image/jpeg', Uint8List.fromList(imageBytes)),
@@ -119,17 +135,21 @@ Return ONLY a JSON object:
 
       final text = response.text;
       debugPrint('Gemini Raw Response: $text');
-      if (text == null || text.isEmpty) return null;
+      if (text == null || text.isEmpty) {
+        debugPrint('Gemini Error: Empty response from API');
+        return null;
+      }
 
       // Aggressive JSON extraction: Find first { and last }
       final int start = text.indexOf('{');
       final int end = text.lastIndexOf('}');
       if (start == -1 || end == -1) {
-        debugPrint('Gemini Error: No JSON object found in response');
+        debugPrint('Gemini Error: No JSON object found in response: $text');
         return null;
       }
       
       final String jsonStr = text.substring(start, end + 1);
+      debugPrint('Gemini Extracted JSON: $jsonStr');
       final Map<String, dynamic> data = jsonDecode(jsonStr);
       
       return {

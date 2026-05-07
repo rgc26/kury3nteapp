@@ -763,14 +763,29 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
   );
 
   Future<void> _scanAppliance() async {
+    // Check if Gemini is configured first
+    if (!_gemini.isConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('⚠️ AI not configured. Check your Gemini API key in .env file.'),
+        backgroundColor: Colors.orange,
+      ));
+      return;
+    }
+
     final picker = ImagePicker();
-    final photo = await picker.pickImage(source: ImageSource.camera);
+    final photo = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
     
     if (photo == null) return;
 
     setState(() => _isScanning = true);
     
     final bytes = await photo.readAsBytes();
+    debugPrint('Scan: Captured image with ${bytes.length} bytes');
     final result = await _gemini.analyzeApplianceImage(bytes);
     
     setState(() => _isScanning = false);
@@ -778,7 +793,10 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
     if (result != null) {
       _showScanResultModal(result);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not identify appliance. Try again or add manually.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Could not identify appliance. Try a clearer photo or add manually.'),
+        duration: Duration(seconds: 4),
+      ));
     }
   }
 
