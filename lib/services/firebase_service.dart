@@ -77,8 +77,9 @@ class FirebaseService {
       ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: 'profile.jpg'));
 
     final response = await request.send();
+    final resData = await response.stream.bytesToString();
+    
     if (response.statusCode == 200) {
-      final resData = await response.stream.bytesToString();
       final json = jsonDecode(resData);
       final url = json['secure_url'] as String;
       
@@ -92,10 +93,17 @@ class FirebaseService {
         // Also update Firebase Auth profile for consistency
         await currentUser?.updatePhotoURL(url);
       }
+      debugPrint('✅ Cloudinary Upload Success: $url');
       return url;
+    } else {
+      debugPrint('❌ Cloudinary Upload Failed (${response.statusCode}): $resData');
+      return null;
     }
+  } catch (e) {
+    debugPrint('⚠️ Cloudinary Error: $e');
     return null;
   }
+}
 
   /// Listen to current user points for gamification (Bayanihan Points)
   Stream<int> getUserPointsStream() {
