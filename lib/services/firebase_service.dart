@@ -181,12 +181,16 @@ class FirebaseService {
     final now = DateTime.now();
     final startOfToday = DateTime(now.year, now.month, now.day);
     
-    final existing = await _db.collection('outages')
-      .where('reporters', arrayContains: uid)
+    final reportsToday = await _db.collection('outages')
       .where('reportedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday))
       .get();
 
-    if (existing.docs.isNotEmpty) {
+    final alreadyReported = reportsToday.docs.any((doc) {
+      final reporters = List<String>.from(doc.data()['reporters'] ?? []);
+      return reporters.contains(uid);
+    });
+
+    if (alreadyReported) {
       throw Exception('May report ka na para sa araw na ito! ⚡ Isang report lang per day per user para maiwasan ang spam.');
     }
     
