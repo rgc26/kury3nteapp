@@ -199,6 +199,18 @@ class FirebaseService {
     }
   }
 
+  /// Add user to an existing report's reporters list (Me Too logic)
+  Future<void> upvoteReport(String reportId) async {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+    
+    final docRef = _db.collection('outages').doc(reportId);
+    await docRef.update({
+      'reporters': FieldValue.arrayUnion([uid]),
+      'upvotes': FieldValue.increment(1),
+    });
+  }
+
   /// User taps "Kuryente Na!"
   Future<void> markRestored(String reportId) async {
     final uid = currentUser?.uid;

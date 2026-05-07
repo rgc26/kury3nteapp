@@ -18,19 +18,45 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Kuryente ⚡ — Live brownout tracking, fuel availability, and community reports for the Philippine energy crisis.">
+  <meta name="theme-color" content="#F59E0B">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="kuryente">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Kuryente">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>kuryente</title>
+  <title>Kuryente ⚡</title>
   <link rel="manifest" href="manifest.json">
+
+  <script>
+    // Capture the PWA install prompt
+    window.deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      window.deferredPrompt = e;
+      // Notify Flutter that the install button can be shown
+      if (window.onAppCanInstall) window.onAppCanInstall();
+    });
+
+    window.installPWA = function() {
+      if (window.deferredPrompt) {
+        window.deferredPrompt.prompt();
+        window.deferredPrompt.userChoice.then((choice) => {
+          if (choice.outcome === 'accepted') {
+            console.log('User accepted the PWA install');
+          }
+          window.deferredPrompt = null;
+        });
+      } else {
+        alert("To install: Tap the Share button (iOS) or the three dots (Android) and select 'Add to Home Screen'.");
+      }
+    };
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

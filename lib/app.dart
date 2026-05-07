@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:js' as js;
 import 'theme/app_colors.dart';
 import 'services/storage_service.dart';
 import 'screens/brownout_map_screen.dart';
@@ -135,23 +136,27 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
             const Divider(color: AppColors.border),
             const Spacer(),
             ListTile(
-              leading: const Icon(Icons.logout, color: AppColors.danger),
-              title: const Text('Logout', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold)),
-              onTap: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Logout?'),
-                    content: const Text('Are you sure you want to sign out?'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Logout', style: TextStyle(color: AppColors.danger))),
-                    ],
-                  ),
-                );
-                if (confirm == true) {
-                  await firebaseService.signOut();
+              leading: const Icon(Icons.install_mobile, color: AppColors.primary),
+              title: const Text('Install Kuryente App', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              subtitle: const Text('Add to home screen', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+              onTap: () {
+                Navigator.pop(context);
+                if (js.context.hasProperty('installPWA')) {
+                  js.context.callMethod('installPWA');
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please refresh the browser to enable the download button! 🔄')),
+                  );
                 }
+              },
+            ),
+            const Divider(color: Colors.white10),
+            ListTile(
+              leading: const Icon(Icons.logout, color: AppColors.danger),
+              title: const Text('Logout', style: TextStyle(color: AppColors.danger)),
+              onTap: () async {
+                await firebaseService.signOut();
+                if (mounted) Navigator.pushReplacementNamed(context, '/login');
               },
             ),
             const SizedBox(height: 20),

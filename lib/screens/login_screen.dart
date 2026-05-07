@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:js' as js;
 import '../theme/app_colors.dart';
 import '../services/firebase_service.dart';
 
@@ -93,6 +94,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
+              const SizedBox(height: 48),
+              
+              // PWA Install Button
+              TextButton.icon(
+                onPressed: () {
+                  if (js.context.hasProperty('installPWA')) {
+                    js.context.callMethod('installPWA');
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please refresh the browser to enable the download button! 🔄')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.download, size: 18),
+                label: const Text('Download Kuryente App'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              Text(
+                'Add to your home screen for the best experience',
+                style: TextStyle(color: AppColors.textSecondary.withAlpha(150), fontSize: 11),
+              ),
             ],
           ),
         ),

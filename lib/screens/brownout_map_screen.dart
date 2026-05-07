@@ -202,7 +202,7 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
             ])),
             
             // Detail card
-            if (_selected != null) Positioned(bottom: 80, left: 16, right: 16, child: _detail(_selected!)),
+            if (_selected != null) Positioned(bottom: 80, left: 16, right: 16, child: _detail(_selected!, _outages)),
             
             // Report button (Floating at bottom)
             Builder(
@@ -320,7 +320,7 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
     ));
   }
 
-  Widget _detail(OutageReport o) {
+  Widget _detail(OutageReport o, List<OutageReport> outages) {
     Color c;
     String st;
     if (o.status == OutageStatus.scheduled) { c = Colors.blue; st = '🔵 Scheduled Advisory'; }
@@ -355,37 +355,53 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
         Builder(
           builder: (context) {
             final uid = _firebaseService.currentUser?.uid;
-            final hasReported = uid != null && o.reporters.contains(uid);
+            final hasAnyActiveReport = uid != null && outages.any((outage) => 
+              (outage.status == OutageStatus.nopower || outage.status == OutageStatus.unverified) && 
+              outage.reporters.contains(uid)
+            );
+            
+            final hasReportedThis = uid != null && o.reporters.contains(uid);
             final hasRestored = uid != null && o.restorers.contains(uid);
             final isTooOld = DateTime.now().difference(o.reportedAt).inHours >= 24;
 
             if (o.status == OutageStatus.unverified || o.status == OutageStatus.nopower) {
-              return Row(
+              final dist = Geolocator.distanceBetween(_userGps.latitude, _userGps.longitude, o.location.latitude, o.location.longitude);
+              final isNear = dist <= 300;
+
+              return Column(
                 children: [
-                  if (o.status == OutageStatus.unverified)
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: (hasReported || isTooOld) ? null : () => _report(o),
-                        icon: Icon(isTooOld ? Icons.timer_off : (hasReported ? Icons.check : Icons.add), size: 16),
-                        label: Text(isTooOld ? 'Expired' : (hasReported ? 'You reported' : 'Me too')),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.warning,
-                          disabledForegroundColor: AppColors.textMuted,
+                  Row(
+                    children: [
+                      if (o.status == OutageStatus.unverified)
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: (hasReportedThis || hasAnyActiveReport || isTooOld || !isNear) ? null : () => _report(o),
+                            icon: Icon(isTooOld ? Icons.timer_off : (hasReportedThis ? Icons.check : Icons.add), size: 16),
+                            label: Text(isTooOld ? 'Expired' : (hasReportedThis ? 'You reported' : 'Me too')),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.warning,
+                              disabledForegroundColor: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      if (o.status == OutageStatus.unverified) const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: (hasRestored || isTooOld || !isNear) ? null : () => _kuryenteNa(o),
+                          icon: Icon(isTooOld ? Icons.timer_off : (hasRestored ? Icons.check : Icons.lightbulb), size: 16),
+                          label: Text(isTooOld ? 'Expired' : (hasRestored ? 'Voted Restored' : 'Kuryente Na!')),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success, 
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: AppColors.success.withAlpha(100),
+                          ),
                         ),
                       ),
-                    ),
-                  if (o.status == OutageStatus.unverified) const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: (hasRestored || isTooOld) ? null : () => _kuryenteNa(o),
-                      icon: Icon(isTooOld ? Icons.timer_off : (hasRestored ? Icons.check : Icons.lightbulb), size: 16),
-                      label: Text(isTooOld ? 'Expired' : (hasRestored ? 'Voted Restored' : 'Kuryente Na!')),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success, 
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: AppColors.success.withAlpha(100),
-                      ),
-                    ),
+                    ],
+                  ),
+                  if (!isNear) Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text('⚠️ You must be within 300m to verify', style: const TextStyle(color: AppColors.warning, fontSize: 10, fontWeight: FontWeight.bold)),
                   ),
                 ],
               );
@@ -420,12 +436,12 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
     }
 
     String? notes;
-    TextEditingController brgyController = TextEditingController();
-    bool isLoadingBrgy = true;
-    bool isSubmitting = false;
-    String? originalBrgy;
-    final trust = _firebaseService.currentUserTrust;
     final exactLoc = targetPin?.location ?? _userGps;
+    TextEditingController brgyController = TextEditingController(text: targetPin?.barangay);
+    bool isLoadingBrgy = targetPin == null; // Only load if it's a new report
+    bool isSubmitting = false;
+    String? originalBrgy = targetPin?.barangay;
+    final trust = _firebaseService.currentUserTrust;
 
     // Show modal first, then update it when geocoding finishes
     showModalBottomSheet(
@@ -437,7 +453,7 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             
-            // Fetch barangay once when the modal is opened
+            // Fetch barangay once when the modal is opened (only for NEW reports)
             if (isLoadingBrgy && brgyController.text.isEmpty) {
               _fetchBarangay(exactLoc).then((fetchedBrgy) {
                 if (mounted) {
@@ -558,7 +574,12 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
                     );
 
                     try {
-                      await _firebaseService.submitReport(r);
+                      if (targetPin != null) {
+                        await _firebaseService.upvoteReport(targetPin.id);
+                      } else {
+                        await _firebaseService.submitReport(r);
+                      }
+                      
                       if (mounted) {
                         Navigator.pop(ctx);
                         ScaffoldMessenger.of(context).showSnackBar(

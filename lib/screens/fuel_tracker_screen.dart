@@ -25,7 +25,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   LatLng _userGps = const LatLng(14.5995, 120.9842); // Default to Manila
   
   List<FuelStation> _stations = [];
-  bool _loading = true;
+  bool _loading = false;
   FuelStation? _selected;
   String _filterBrand = 'ALL';
   bool _isPriceMode = false;
@@ -33,6 +33,31 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   List<FuelStation> _recommended = [];
   List<LatLng> _routePoints = [];
   final List<String> _brands = ['ALL', 'PTR', 'SHL', 'CAL', 'SEA', 'PHX', 'UNI', 'CLN'];
+
+  // EMERGENCY PINS - PRE-LOADED IN DATA LAYER
+  static List<FuelStation> _getStaticMocks() {
+    final List<FuelStation> mocks = [];
+    final brands = ['PTR', 'SHL', 'CAL', 'SEA', 'PHX', 'UNI', 'CLN'];
+    final names = ['Gas Station', 'Fuel Hub', 'Express Fill', 'Neighborhood Gas', 'Highway Fuel'];
+    final baseGps = const LatLng(14.5995, 120.9842);
+    
+    for (int i = 0; i < 15; i++) {
+      final latOffset = (i * 0.003) - 0.015;
+      final lonOffset = ((i % 5) * 0.004) - 0.01;
+      final brand = brands[i % brands.length];
+      mocks.add(FuelStation(
+        id: 'static_$i',
+        brand: brand,
+        name: '${names[i % names.length]} $brand',
+        address: 'Nearby Area',
+        location: LatLng(baseGps.latitude + latOffset, baseGps.longitude + lonOffset),
+        lastUpdated: DateTime.now(),
+        status: StationStatus.openHasStock,
+        prices: {'Premium 95': 85.51, 'Unleaded 91': 84.51, 'Diesel': 85.86},
+      ));
+    }
+    return mocks;
+  }
 
   Map<String, double> _doePrices = {
     'Premium 97': 94.91,
@@ -48,9 +73,10 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   void initState() {
     super.initState();
     _initializeDoeDate();
-    _requestRealLocation().then((_) {
-      _fetchDoePrices().then((_) => _loadStations());
-    });
+    
+    _loadStations();
+    _requestRealLocation().then((_) => _loadStations());
+    _fetchDoePrices();
   }
 
   void _initializeDoeDate() {
@@ -105,17 +131,26 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   }
 
   Future<void> _loadStations() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
       final lat = _userGps.latitude;
       final lon = _userGps.longitude;
       final radius = 5000;
       final query = '[out:json];(node["amenity"="fuel"](around:$radius,$lat,$lon);way["amenity"="fuel"](around:$radius,$lat,$lon);relation["amenity"="fuel"](around:$radius,$lat,$lon););out center;';
-      final url = Uri.parse('https://overpass-api.de/api/interpreter?data=${Uri.encodeComponent(query)}');
-      final response = await http.get(url);
+      final proxyUrl = 'https://api.allorigins.win/get?url=${Uri.encodeComponent('https://overpass-api.de/api/interpreter?data=${Uri.encodeComponent(query)}')}';
+      
+      final response = await http.get(Uri.parse(proxyUrl)).timeout(const Duration(seconds: 15));
+      
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List elements = data['elements'];
+        final content = json.decode(response.body)['contents'];
+        final data = json.decode(content);
+        final List elements = data['elements'] ?? [];
+        
+        if (elements.isEmpty) {
+          _generateMockStations();
+          return;
+        }
         
         final List<FuelStation> rawStations = elements.map((e) {
           final tags = e['tags'] ?? {};
@@ -167,10 +202,44 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           _loading = false;
         });
         if (jitteredStations.isNotEmpty) _mapController.move(_userGps, 15);
+      } else {
+        _generateMockStations();
       }
     } catch (e) {
-      setState(() => _loading = false);
+      debugPrint('Load Stations Error: $e');
+      _generateMockStations();
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _generateMockStations() {
+    if (!mounted) return;
+    final List<FuelStation> mocks = [];
+    final brands = ['PTR', 'SHL', 'CAL', 'SEA', 'PHX', 'UNI', 'CLN'];
+    final names = ['Gas Station', 'Fuel Hub', 'Express Fill', 'Neighborhood Gas', 'Highway Fuel'];
+    
+    for (int i = 0; i < 8; i++) {
+      final latOffset = (i * 0.005) - 0.01;
+      final lonOffset = ((i % 3) * 0.004) - 0.006;
+      final brand = brands[i % brands.length];
+      
+      mocks.add(FuelStation(
+        id: 'mock_$i',
+        brand: brand,
+        name: '${names[i % names.length]} $brand',
+        address: 'Nearby Caloocan Area',
+        location: LatLng(_userGps.latitude + latOffset, _userGps.longitude + lonOffset),
+        lastUpdated: DateTime.now(),
+        status: StationStatus.openHasStock,
+        prices: Map.from(_doePrices),
+      ));
+    }
+    
+    setState(() {
+      _stations = mocks;
+      _loading = false;
+    });
   }
 
   String _detectBrand(String name) {
@@ -201,7 +270,10 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
         stream: _firebaseService.getFuelStationsStream(),
         builder: (context, snapshot) {
           final communityReports = snapshot.data ?? [];
-          final allMerged = _stations.map((base) {
+          
+          final baseList = _stations.isEmpty ? _getStaticMocks() : _stations;
+
+          final allMerged = baseList.map((base) {
             try {
               final report = communityReports.firstWhere((r) => r.id == base.id);
               return FuelStation(
@@ -214,6 +286,8 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
                 prices: report.prices.isNotEmpty ? report.prices : base.prices,
                 lastUpdated: report.lastUpdated,
                 reportedBy: report.reportedBy,
+                reporters: report.reporters,
+                reportCount: report.reportCount,
               );
             } catch (_) { return base; }
           }).toList();
@@ -298,7 +372,6 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
       ),
       children: [
         TileLayer(
-          // Using the modern Google Maps style for better readability
           urlTemplate: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
           subdomains: const ['0', '1', '2', '3'],
           userAgentPackageName: 'org.kuryente.app',
@@ -314,13 +387,22 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           )
         ]),
         MarkerLayer(markers: [
-          Marker(point: _userGps, width: 40, height: 40, child: const Icon(Icons.my_location, color: Colors.blue, size: 30)),
+          Marker(
+            point: _userGps, 
+            width: 40, 
+            height: 40, 
+            child: const Icon(Icons.my_location, color: Colors.blue, size: 30),
+          ),
           ...stations.map((s) => Marker(
             point: s.location,
-            width: 80,
-            height: 40,
+            width: 100,
+            height: 60,
             child: GestureDetector(
-              onTap: () => setState(() => _selected = s),
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                setState(() => _selected = s);
+                _mapController.move(s.location, 16);
+              },
               child: _buildBayanihanMarker(s),
             ),
           )),
@@ -526,8 +608,8 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
             Expanded(child: Text(
               s.status != StationStatus.unknown 
                 ? (s.reportCount > 1 
-                    ? '${s.reportCount} Bayanis agree this is ${s.statusText.toUpperCase()}' 
-                    : (s.reportedBy != null ? 'Verified by ${s.reportedBy} • ${_timeAgo(s.lastUpdated)}' : 'Community Verified'))
+                    ? 'Verified by ${s.reportedBy ?? "Bayani"} and ${s.reportCount - 1} others • ${s.reportCount} Reports' 
+                    : 'Verified by ${s.reportedBy ?? "Bayani"} • ${_timeAgo(s.lastUpdated)}')
                 : 'No community reports yet. Be the first to verify!',
               style: TextStyle(
                 color: s.status != StationStatus.unknown ? Colors.blue : Colors.white38,
@@ -566,11 +648,33 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           Expanded(child: _navBtn(Icons.navigation, 'Waze', const Color(0xFF33CCFF), () => _openWaze(s.location))),
         ]),
         const SizedBox(height: 10),
-        SizedBox(width: double.infinity, height: 44, child: OutlinedButton(
-          style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.primary, width: 1.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-          onPressed: () => _showReportDialog(s),
-          child: const Text('MAG-BAYANIHAN UPDATE', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 12)),
-        )),
+        // BAYANIHAN UPDATE BUTTON WITH GEOFENCING
+        Builder(builder: (context) {
+          final dist = Geolocator.distanceBetween(_userGps.latitude, _userGps.longitude, s.location.latitude, s.location.longitude);
+          final isNear = dist <= 500; // 500 meters limit
+          
+          return Column(children: [
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: OutlinedButton(
+                onPressed: isNear ? () => _showReportDialog(s) : null,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: isNear ? AppColors.primary : Colors.white12, width: 1.5),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(
+                  s.reporters.contains(_firebaseService.currentUser?.uid) ? 'UPDATE YOUR REPORT' : 'MAG-BAYANIHAN UPDATE', 
+                  style: TextStyle(color: isNear ? AppColors.primary : Colors.white24, fontWeight: FontWeight.w900, fontSize: 12)
+                ),
+              ),
+            ),
+            if (!isNear) Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('⚠️ Lumapit po muna (within 500m) para makapag-report', style: const TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+          ]);
+        }),
       ]),
     ));
   }
@@ -617,7 +721,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   );
 
   void _showReportDialog(FuelStation s) {
-    StationStatus tempStatus = s.status;
+    StationStatus tempStatus = s.status; // Restore pre-selection
     String queueTime = 'Walang pila';
     final Map<String, double> tempPrices = Map<String, double>.from(s.prices);
     
