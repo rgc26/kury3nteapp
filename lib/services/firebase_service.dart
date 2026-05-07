@@ -350,13 +350,56 @@ class FirebaseService {
   Future<void> reportFuelStation(String stationId, StationStatus status, Map<String, double> prices) async {
     final user = currentUser;
     if (user == null) return;
-    await _db.collection('fuel_stations').doc(stationId).set({
-      'status': status.name,
-      'prices': prices,
-      'lastUpdated': FieldValue.serverTimestamp(),
-      'reportedBy': user.displayName ?? 'Bayani',
-      'reporters': FieldValue.arrayUnion([user.uid]),
-    }, SetOptions(merge: true));
+    final uid = user.uid;
+    final docRef = _db.collection('fuel_stations').doc(stationId);
+
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(docRef);
+      if (!snap.exists) return;
+
+      final data = snap.data() ?? {};
+      final currentPrices = Map<String, double>.from(data['prices'] ?? {});
+      final pending = Map<String, dynamic>.from(data['pendingPrices'] ?? {});
+      
+      bool priceUpdated = false;
+
+      // Process each reported price
+      prices.forEach((fuelType, price) {
+        final priceStr = price.toStringAsFixed(2);
+        final fuelTypeKey = fuelType.toLowerCase();
+        
+        if (!pending.containsKey(fuelTypeKey)) pending[fuelTypeKey] = {};
+        final priceMap = Map<String, dynamic>.from(pending[fuelTypeKey]);
+        
+        if (!priceMap.containsKey(priceStr)) priceMap[priceStr] = [];
+        final voters = List<String>.from(priceMap[priceStr]);
+        
+        if (!voters.contains(uid)) {
+          voters.add(uid);
+          priceMap[priceStr] = voters;
+          pending[fuelTypeKey] = priceMap;
+          
+          // Consensus reached (3 or more unique users)
+          if (voters.length >= 3) {
+            currentPrices[fuelType] = price;
+            priceUpdated = true;
+            // Clear pending for this fuel type after consensus
+            pending.remove(fuelTypeKey);
+          }
+        }
+      });
+
+      tx.set(docRef, {
+        'status': status.name,
+        'prices': currentPrices,
+        'pendingPrices': pending,
+        'lastUpdated': FieldValue.serverTimestamp(),
+        'reportedBy': user.displayName ?? 'Bayani',
+        'reporters': FieldValue.arrayUnion([uid]),
+        'reportCount': FieldValue.increment(1),
+      }, SetOptions(merge: true));
+    });
+    
     await incrementUserPoints(15);
   }
 
