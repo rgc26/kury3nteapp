@@ -13,12 +13,22 @@ class StorageService {
   static const String _readinessKey = 'readiness_checklist';
   static const String _bayanihanKey = 'bayanihan_posts';
   static const String _settingsKey = 'app_settings';
+  static const String _pwaPromptDismissedKey = 'pwa_prompt_dismissed';
   static const String _geminiKeyKey = 'gemini_api_key';
 
   late SharedPreferences _prefs;
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+  }
+
+  // --- PWA Prompt ---
+  bool isPwaPromptDismissed() {
+    return _prefs.getBool(_pwaPromptDismissedKey) ?? false;
+  }
+
+  Future<void> setPwaPromptDismissed(bool dismissed) async {
+    await _prefs.setBool(_pwaPromptDismissedKey, dismissed);
   }
 
   // --- Outage Reports ---

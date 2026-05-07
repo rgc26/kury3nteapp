@@ -53,7 +53,7 @@ class KuryenteApp extends StatelessWidget {
             return AppShell(key: AppShell.shellKey, storage: storage);
           }
           // If logged out
-          return LoginScreen(firebaseService: firebaseService);
+          return LoginScreen(firebaseService: firebaseService, storage: storage);
         },
       ),
     );
