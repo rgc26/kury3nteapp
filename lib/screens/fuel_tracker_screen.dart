@@ -142,94 +142,142 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           'relation["amenity"="fuel"](around:$radius,$lat,$lon);'
           ');out center;';
       
-      final proxyUrl = 'https://api.allorigins.win/get?url='
-          '${Uri.encodeComponent('https://overpass-api.de/api/interpreter?data=${Uri.encodeComponent(query)}')}';
+      final overpassUrl = 'https://overpass-api.de/api/interpreter?data=${Uri.encodeComponent(query)}';
       
       debugPrint('🔍 Fetching real stations near ($lat, $lon)...');
       
-      final response = await http.get(Uri.parse(proxyUrl))
-          .timeout(const Duration(seconds: 20));
+      // Try multiple strategies: direct first, then proxies
+      String? jsonBody;
       
-      if (response.statusCode == 200) {
-        final content = json.decode(response.body)['contents'];
-        final data = json.decode(content);
-        final List elements = data['elements'] ?? [];
-        
-        debugPrint('📍 OSM returned ${elements.length} fuel stations');
-        
-        if (elements.isEmpty) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No gas stations found nearby. Try zooming out or refreshing.'), backgroundColor: Colors.orange));
+      // Strategy 1: Direct call (Overpass API supports CORS)
+      try {
+        debugPrint('📡 Trying direct Overpass API...');
+        final response = await http.get(Uri.parse(overpassUrl))
+            .timeout(const Duration(seconds: 15));
+        if (response.statusCode == 200 && response.body.startsWith('{')) {
+          jsonBody = response.body;
+          debugPrint('✅ Direct Overpass API worked!');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Direct failed: $e');
+      }
+      
+      // Strategy 2: corsproxy.io
+      if (jsonBody == null) {
+        try {
+          debugPrint('📡 Trying corsproxy.io...');
+          final proxyUrl = 'https://corsproxy.io/?${Uri.encodeComponent(overpassUrl)}';
+          final response = await http.get(Uri.parse(proxyUrl))
+              .timeout(const Duration(seconds: 15));
+          if (response.statusCode == 200 && response.body.startsWith('{')) {
+            jsonBody = response.body;
+            debugPrint('✅ corsproxy.io worked!');
           }
-          return;
+        } catch (e) {
+          debugPrint('⚠️ corsproxy.io failed: $e');
         }
-        
-        final List<FuelStation> realStations = [];
-        
-        for (var e in elements) {
-          final tags = e['tags'] ?? {};
-          final name = tags['name'] ?? 'Gas Station';
-          final brand = tags['brand'] ?? _detectBrand(name);
-          final double latVal = (e['lat'] ?? e['center']?['lat'] ?? 0.0).toDouble();
-          final double lonVal = (e['lon'] ?? e['center']?['lon'] ?? 0.0).toDouble();
-          
-          // Skip invalid coordinates
-          if (latVal == 0.0 && lonVal == 0.0) continue;
-          
-          // Generate realistic price variation per station
-          final random = (e['id'] % 30) / 10.0 - 1.5;
-          final Map<String, double> prices = {};
-          _doePrices.forEach((key, val) => prices[key] = val + random);
-          
-          realStations.add(FuelStation(
-            id: 'osm_${e['id']}',
-            brand: brand,
-            name: name,
-            address: tags['addr:street'] ?? tags['addr:city'] ?? 'Nearby Area',
-            location: LatLng(latVal, lonVal),
-            lastUpdated: DateTime.now(),
-            status: StationStatus.unknown,
-            prices: prices,
-          ));
-        }
-
-        // APPLY JITTER TO OVERLAPPING PINS
-        final List<FuelStation> jitteredStations = [];
-        final Map<String, int> coordCount = {};
-        
-        for (var s in realStations) {
-          final key = '${s.location.latitude.toStringAsFixed(4)}_${s.location.longitude.toStringAsFixed(4)}';
-          final count = coordCount[key] ?? 0;
-          coordCount[key] = count + 1;
-          
-          if (count > 0) {
-            final double nudgeLat = (count % 2 == 0 ? 1 : -1) * (count * 0.00015);
-            final double nudgeLon = (count % 3 == 0 ? 1 : -1) * (count * 0.00015);
-            jitteredStations.add(FuelStation(
-              id: s.id, brand: s.brand, name: s.name, address: s.address,
-              location: LatLng(s.location.latitude + nudgeLat, s.location.longitude + nudgeLon),
-              lastUpdated: s.lastUpdated, status: s.status, prices: s.prices,
-            ));
-          } else {
-            jitteredStations.add(s);
+      }
+      
+      // Strategy 3: allorigins.win (wrapped JSON)
+      if (jsonBody == null) {
+        try {
+          debugPrint('📡 Trying allorigins.win...');
+          final proxyUrl = 'https://api.allorigins.win/get?url=${Uri.encodeComponent(overpassUrl)}';
+          final response = await http.get(Uri.parse(proxyUrl))
+              .timeout(const Duration(seconds: 15));
+          if (response.statusCode == 200) {
+            final decoded = json.decode(response.body);
+            if (decoded['contents'] != null && decoded['contents'].toString().startsWith('{')) {
+              jsonBody = decoded['contents'];
+              debugPrint('✅ allorigins.win worked!');
+            }
           }
+        } catch (e) {
+          debugPrint('⚠️ allorigins.win failed: $e');
         }
-
-        if (jitteredStations.isNotEmpty && mounted) {
-          debugPrint('✅ Loaded ${jitteredStations.length} real gas stations');
-          setState(() => _stations = jitteredStations);
-          _mapController.move(_userGps, 15);
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('📍 Found ${jitteredStations.length} gas stations near you!'), backgroundColor: Colors.green));
-        }
-      } else {
-        debugPrint('⚠️ Proxy returned status ${response.statusCode}');
+      }
+      
+      if (jsonBody == null) {
+        debugPrint('❌ All fetch strategies failed');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('⚠️ Could not fetch stations. Tap refresh to try again.'), backgroundColor: Colors.orange));
+            const SnackBar(content: Text('⚠️ Could not fetch stations. Check your internet and tap refresh.'), backgroundColor: Colors.orange));
         }
+        return;
+      }
+      
+      // Parse the JSON response
+      final data = json.decode(jsonBody);
+      final List elements = data['elements'] ?? [];
+      
+      debugPrint('📍 OSM returned ${elements.length} fuel stations');
+      
+      if (elements.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No gas stations found nearby. Try refreshing.'), backgroundColor: Colors.orange));
+        }
+        return;
+      }
+      
+      final List<FuelStation> realStations = [];
+      
+      for (var e in elements) {
+        final tags = e['tags'] ?? {};
+        final name = tags['name'] ?? 'Gas Station';
+        final brand = tags['brand'] ?? _detectBrand(name);
+        final double latVal = (e['lat'] ?? e['center']?['lat'] ?? 0.0).toDouble();
+        final double lonVal = (e['lon'] ?? e['center']?['lon'] ?? 0.0).toDouble();
+        
+        // Skip invalid coordinates
+        if (latVal == 0.0 && lonVal == 0.0) continue;
+        
+        // Generate realistic price variation per station
+        final random = (e['id'] % 30) / 10.0 - 1.5;
+        final Map<String, double> prices = {};
+        _doePrices.forEach((key, val) => prices[key] = val + random);
+        
+        realStations.add(FuelStation(
+          id: 'osm_${e['id']}',
+          brand: brand,
+          name: name,
+          address: tags['addr:street'] ?? tags['addr:city'] ?? 'Nearby Area',
+          location: LatLng(latVal, lonVal),
+          lastUpdated: DateTime.now(),
+          status: StationStatus.unknown,
+          prices: prices,
+        ));
+      }
+
+      // APPLY JITTER TO OVERLAPPING PINS
+      final List<FuelStation> jitteredStations = [];
+      final Map<String, int> coordCount = {};
+      
+      for (var s in realStations) {
+        final key = '${s.location.latitude.toStringAsFixed(4)}_${s.location.longitude.toStringAsFixed(4)}';
+        final count = coordCount[key] ?? 0;
+        coordCount[key] = count + 1;
+        
+        if (count > 0) {
+          final double nudgeLat = (count % 2 == 0 ? 1 : -1) * (count * 0.00015);
+          final double nudgeLon = (count % 3 == 0 ? 1 : -1) * (count * 0.00015);
+          jitteredStations.add(FuelStation(
+            id: s.id, brand: s.brand, name: s.name, address: s.address,
+            location: LatLng(s.location.latitude + nudgeLat, s.location.longitude + nudgeLon),
+            lastUpdated: s.lastUpdated, status: s.status, prices: s.prices,
+          ));
+        } else {
+          jitteredStations.add(s);
+        }
+      }
+
+      if (jitteredStations.isNotEmpty && mounted) {
+        debugPrint('✅ Loaded ${jitteredStations.length} real gas stations');
+        setState(() => _stations = jitteredStations);
+        _mapController.move(_userGps, 15);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('📍 Found ${jitteredStations.length} gas stations near you!'), backgroundColor: Colors.green));
       }
     } catch (e) {
       debugPrint('⚠️ Load Stations Error: $e');
