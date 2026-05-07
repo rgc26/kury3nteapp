@@ -126,6 +126,41 @@ class FirebaseService {
     );
   }
 
+  /// Listen to live Bayanihan community posts
+  Stream<List<BayanihanPost>> getBayanihanPostsStream() {
+    return _db.collection('bayanihan')
+      .orderBy('createdAt', descending: true)
+      .snapshots()
+      .map((snapshot) {
+        return snapshot.docs.map((doc) {
+          final data = doc.data();
+          return BayanihanPost.fromJson({...data, 'id': doc.id});
+        }).toList();
+      });
+  }
+
+  /// Submit a new Bayanihan community post
+  Future<void> submitBayanihanPost(BayanihanPost post) async {
+    final user = currentUser;
+    if (user == null) return;
+    
+    final data = post.toJson();
+    data['authorName'] = user.displayName ?? 'Bayani';
+    data['authorId'] = user.uid;
+    data['createdAt'] = FieldValue.serverTimestamp(); // Use server time for consistency
+
+    await _db.collection('bayanihan').add(data);
+    await incrementUserPoints(20); // Higher points for community help posts
+  }
+
+  /// React to a Bayanihan post (Interested/Salamat)
+  Future<void> reactToBayanihanPost(String postId, String type) async {
+    final field = type == 'interested' ? 'interestedCount' : 'salamatCount';
+    await _db.collection('bayanihan').doc(postId).update({
+      field: FieldValue.increment(1),
+    });
+  }
+
   Future<void> init() async {
     // Request notification permissions for PWA
     try {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Appliance {
   final String name;
@@ -84,18 +85,29 @@ class BayanihanPost {
     'salamatCount': salamatCount,
   };
 
-  factory BayanihanPost.fromJson(Map<String, dynamic> json) => BayanihanPost(
-    id: json['id'],
-    category: BayanihanCategory.values.firstWhere((e) => e.name == json['category']),
-    title: json['title'],
-    description: json['description'],
-    location: json['location'],
-    contactInfo: json['contactInfo'],
-    availability: json['availability'],
-    createdAt: DateTime.parse(json['createdAt']),
-    interestedCount: json['interestedCount'] ?? 0,
-    salamatCount: json['salamatCount'] ?? 0,
-  );
+  factory BayanihanPost.fromJson(Map<String, dynamic> json) {
+    DateTime date;
+    if (json['createdAt'] is String) {
+      date = DateTime.parse(json['createdAt']);
+    } else if (json['createdAt'] is Timestamp) {
+      date = (json['createdAt'] as Timestamp).toDate();
+    } else {
+      date = DateTime.now();
+    }
+
+    return BayanihanPost(
+      id: json['id'] ?? '',
+      category: BayanihanCategory.values.firstWhere((e) => e.name == json['category'], orElse: () => BayanihanCategory.generator),
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      location: json['location'],
+      contactInfo: json['contactInfo'],
+      availability: json['availability'],
+      createdAt: date,
+      interestedCount: json['interestedCount'] ?? 0,
+      salamatCount: json['salamatCount'] ?? 0,
+    );
+  }
 }
 
 enum BayanihanCategory { generator, fuelPool, charging, businessSos }

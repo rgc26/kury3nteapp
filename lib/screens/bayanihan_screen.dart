@@ -53,38 +53,45 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Row(children: [Text('🤝 ', style: TextStyle(fontSize: 22)), Text('Bayanihan Board')]),
-        actions: [
-          Row(children: [
-            const Text('Near Me', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-            Switch(value: _nearMeOnly, onChanged: (v) => setState(() => _nearMeOnly = v)),
+    return StreamBuilder<List<BayanihanPost>>(
+      stream: _firebaseService.getBayanihanPostsStream(),
+      builder: (context, snapshot) {
+        final posts = snapshot.data ?? [];
+        
+        return Scaffold(
+          appBar: AppBar(
+            title: const Row(children: [Text('🤝 ', style: TextStyle(fontSize: 22)), Text('Bayanihan Board')]),
+            actions: [
+              Row(children: [
+                const Text('Near Me', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                Switch(value: _nearMeOnly, onChanged: (v) => setState(() => _nearMeOnly = v)),
+              ]),
+            ],
+            bottom: TabBar(controller: _tabCtrl, isScrollable: true, tabs: const [
+              Tab(text: '📡 Live Feed'), Tab(text: '🔌 Generator'), Tab(text: '⛽ Fuel Pool'), Tab(text: '🔋 Charging'), Tab(text: '🏪 Business'),
+            ]),
+          ),
+          body: TabBarView(controller: _tabCtrl, children: [
+            _buildLiveFeedTab(posts),
+            _postList(BayanihanCategory.generator, posts),
+            _postList(BayanihanCategory.fuelPool, posts),
+            _postList(BayanihanCategory.charging, posts),
+            _postList(BayanihanCategory.businessSos, posts),
           ]),
-        ],
-        bottom: TabBar(controller: _tabCtrl, isScrollable: true, tabs: const [
-          Tab(text: '📡 Live Feed'), Tab(text: '🔌 Generator'), Tab(text: '⛽ Fuel Pool'), Tab(text: '🔋 Charging'), Tab(text: '🏪 Business'),
-        ]),
-      ),
-      body: TabBarView(controller: _tabCtrl, children: [
-        _buildLiveFeedTab(),
-        _postList(BayanihanCategory.generator),
-        _postList(BayanihanCategory.fuelPool),
-        _postList(BayanihanCategory.charging),
-        _postList(BayanihanCategory.businessSos),
-      ]),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createPost,
-        icon: const Icon(Icons.add),
-        label: const Text('Post'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.background,
-      ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: _createPost,
+            icon: const Icon(Icons.add),
+            label: const Text('Post'),
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.background,
+          ),
+        );
+      }
     );
   }
 
-  Widget _postList(BayanihanCategory cat) {
-    final posts = _filtered(cat);
+  Widget _postList(BayanihanCategory cat, List<BayanihanPost> allPosts) {
+    final posts = allPosts.where((p) => p.category == cat).toList();
     if (posts.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Text(cat == BayanihanCategory.generator ? '🔌' : cat == BayanihanCategory.fuelPool ? '⛽' : cat == BayanihanCategory.charging ? '🔋' : '🏪', style: const TextStyle(fontSize: 48)),
       const SizedBox(height: 12),
@@ -120,9 +127,9 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
       ])),
       const SizedBox(height: 10),
       Row(children: [
-        _reactionBtn('🙋 Interested', p.interestedCount, () => setState(() => p.interestedCount++)),
+        _reactionBtn('🙋 Interested', p.interestedCount, () => _firebaseService.reactToBayanihanPost(p.id, 'interested')),
         const SizedBox(width: 12),
-        _reactionBtn('🙏 Salamat', p.salamatCount, () => setState(() => p.salamatCount++)),
+        _reactionBtn('🙏 Salamat', p.salamatCount, () => _firebaseService.reactToBayanihanPost(p.id, 'salamat')),
         const Spacer(),
         if (p.contactInfo != null) TextButton.icon(icon: const Icon(Icons.chat, size: 14), label: const Text('Contact', style: TextStyle(fontSize: 11)), onPressed: () {}),
       ]),
@@ -144,7 +151,7 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
     return '${d.inDays}d ago';
   }
 
-  Widget _buildLiveFeedTab() {
+  Widget _buildLiveFeedTab(List<BayanihanPost> allPosts) {
     return StreamBuilder<List<OutageReport>>(
       stream: _firebaseService.getOutagesStream(),
       builder: (context, outageSnap) {
@@ -154,7 +161,6 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
             final outages = outageSnap.data ?? [];
             final fuels = (fuelSnap.data ?? []).where((s) => s.status != StationStatus.unknown).toList();
             
-            // Convert to generic "Activity" items for the feed
             final List<Map<String, dynamic>> activities = [];
             
             for (var o in outages) {
@@ -177,7 +183,7 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
               });
             }
 
-            for (var p in _posts) {
+            for (var p in allPosts) {
               activities.add({
                 'type': 'post',
                 'title': p.title,
@@ -187,15 +193,22 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
               });
             }
 
-            // Sort by newest first
-            activities.sort((a, b) => b['time'].compareTo(a['time']));
+            activities.sort((a, b) {
+              final aTime = a['time'] is DateTime ? a['time'] : (a['time'] as dynamic).toDate();
+              final bTime = b['time'] is DateTime ? b['time'] : (b['time'] as dynamic).toDate();
+              return bTime.compareTo(aTime);
+            });
 
             if (activities.isEmpty) return const Center(child: Text('Wala pang live updates...', style: TextStyle(color: AppColors.textMuted)));
 
             return ListView.builder(
               padding: const EdgeInsets.all(12),
               itemCount: activities.length,
-              itemBuilder: (context, index) => _liveActivityCard(activities[index]),
+              itemBuilder: (context, index) {
+                final act = activities[index];
+                final time = act['time'] is DateTime ? act['time'] : (act['time'] as dynamic).toDate();
+                return _liveActivityCard(act, time);
+              },
             );
           },
         );
@@ -203,7 +216,7 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
     );
   }
 
-  Widget _liveActivityCard(Map<String, dynamic> act) {
+  Widget _liveActivityCard(Map<String, dynamic> act, DateTime time) {
     final IconData icon = act['type'] == 'brownout' ? Icons.power_off : act['type'] == 'fuel' ? Icons.local_gas_station : Icons.handshake;
     final Color color = act['type'] == 'brownout' ? AppColors.danger : act['type'] == 'fuel' ? AppColors.primary : AppColors.success;
     
@@ -212,14 +225,13 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
       child: ListTile(
         leading: CircleAvatar(backgroundColor: color.withAlpha(20), child: Icon(icon, color: color, size: 20)),
         title: Text(act['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        subtitle: Text('${act['subtitle']} • ${_timeAgo(act['time'])}', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        subtitle: Text('${act['subtitle']} • ${_timeAgo(time)}', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
         trailing: const Icon(Icons.chevron_right, size: 16),
         onTap: () {
-          // If brownout or fuel, we can navigate to map
           if (act['type'] == 'brownout') {
              AppShell.shellKey.currentState?.jumpToReport(act['data']);
-          } else if (act['type'] == 'fuel') {
-             // In a real app we'd jump to fuel map, but for now we focus on the feed list
+          } else if (act['type'] == 'post') {
+             // Handle navigation
           }
         },
       ),
@@ -228,7 +240,7 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
 
   void _createPost() {
     String title = '', desc = '', location = '', avail = '';
-    BayanihanCategory cat = BayanihanCategory.values[_tabCtrl.index];
+    BayanihanCategory cat = BayanihanCategory.values[_tabCtrl.index > 0 ? _tabCtrl.index - 1 : 0];
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
@@ -249,14 +261,15 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
           const SizedBox(height: 10),
           TextField(decoration: const InputDecoration(hintText: 'Availability (e.g., 8AM-5PM)', prefixIcon: Icon(Icons.schedule, size: 18)), onChanged: (v) => avail = v),
           const SizedBox(height: 20),
-          SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: () {
+          SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: () async {
             if (title.isEmpty || desc.isEmpty) return;
-            final post = BayanihanPost(id: 'u_${DateTime.now().millisecondsSinceEpoch}', category: cat, title: title, description: desc,
+            final post = BayanihanPost(id: '', category: cat, title: title, description: desc,
               location: location.isNotEmpty ? location : null, availability: avail.isNotEmpty ? avail : null, createdAt: DateTime.now());
-            setState(() => _posts.insert(0, post));
-            widget.storage.saveBayanihanPosts(_posts);
-            Navigator.pop(ctx);
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Post created! Salamat sa Bayanihan! 🤝')));
+            await _firebaseService.submitBayanihanPost(post);
+            if (mounted) {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Post created! Salamat sa Bayanihan! 🤝')));
+            }
           }, icon: const Icon(Icons.send), label: const Text('Post'))),
           const SizedBox(height: 20),
         ])),
