@@ -68,42 +68,43 @@ class FirebaseService {
   /// Uploads an image to Cloudinary (Alternative to Firebase Storage)
   /// Requires Cloudinary Cloud Name and Unsigned Upload Preset
   Future<String?> uploadToCloudinary(Uint8List bytes) async {
-    const cloudName = 'dm7x0aibx'; 
-    const uploadPreset = 'ml_default'; 
+    try {
+      const cloudName = 'dm7x0aibx'; 
+      const uploadPreset = 'ml_default'; 
 
-    final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
-    final request = http.MultipartRequest('POST', uri)
-      ..fields['upload_preset'] = uploadPreset
-      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: 'profile.jpg'));
+      final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['upload_preset'] = uploadPreset
+        ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: 'profile.jpg'));
 
-    final response = await request.send();
-    final resData = await response.stream.bytesToString();
-    
-    if (response.statusCode == 200) {
-      final json = jsonDecode(resData);
-      final url = json['secure_url'] as String;
+      final response = await request.send();
+      final resData = await response.stream.bytesToString();
       
-      // Update Firestore profile
-      final uid = currentUser?.uid;
-      if (uid != null) {
-        await _db.collection('users').doc(uid).set({
-          'photoUrl': url,
-        }, SetOptions(merge: true));
+      if (response.statusCode == 200) {
+        final json = jsonDecode(resData);
+        final url = json['secure_url'] as String;
         
-        // Also update Firebase Auth profile for consistency
-        await currentUser?.updatePhotoURL(url);
+        // Update Firestore profile
+        final uid = currentUser?.uid;
+        if (uid != null) {
+          await _db.collection('users').doc(uid).set({
+            'photoUrl': url,
+          }, SetOptions(merge: true));
+          
+          // Also update Firebase Auth profile for consistency
+          await currentUser?.updatePhotoURL(url);
+        }
+        debugPrint('✅ Cloudinary Upload Success: $url');
+        return url;
+      } else {
+        debugPrint('❌ Cloudinary Upload Failed (${response.statusCode}): $resData');
+        return null;
       }
-      debugPrint('✅ Cloudinary Upload Success: $url');
-      return url;
-    } else {
-      debugPrint('❌ Cloudinary Upload Failed (${response.statusCode}): $resData');
+    } catch (e) {
+      debugPrint('⚠️ Cloudinary Error: $e');
       return null;
     }
-  } catch (e) {
-    debugPrint('⚠️ Cloudinary Error: $e');
-    return null;
   }
-}
 
   /// Listen to current user points for gamification (Bayanihan Points)
   Stream<int> getUserPointsStream() {
@@ -228,6 +229,21 @@ class FirebaseService {
 
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  /// Listen to all outage history (Past 7 days + Scheduled)
+  Stream<List<OutageReport>> getOutageHistoryStream() {
+    return _db.collection('outages')
+      .orderBy('reportedAt', descending: true)
+      .limit(100) // Don't fetch everything to save on bandwidth
+      .snapshots()
+      .map((snapshot) {
+        return snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return OutageReport.fromJson(data);
+        }).toList();
+      });
   }
 
   /// Ensures this device is only used by one unique account
