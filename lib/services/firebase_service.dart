@@ -9,6 +9,7 @@ import '../models/outage_report.dart';
 import '../models/trust_system.dart';
 import '../models/meralco_schedule.dart';
 import '../models/fuel_station.dart';
+import '../models/app_models.dart';
 
 class FirebaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
