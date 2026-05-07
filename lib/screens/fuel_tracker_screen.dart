@@ -25,7 +25,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   LatLng _userGps = const LatLng(14.5995, 120.9842); // Default to Manila
   
   List<FuelStation> _stations = [];
-  bool _loading = true;
+  bool _loading = false; // Start as false so pins show up immediately
   FuelStation? _selected;
   String _filterBrand = 'ALL';
   bool _isPriceMode = false;
@@ -33,6 +33,36 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   List<FuelStation> _recommended = [];
   List<LatLng> _routePoints = [];
   final List<String> _brands = ['ALL', 'PTR', 'SHL', 'CAL', 'SEA', 'PHX', 'UNI', 'CLN'];
+
+  // PRE-LOADED MOCKS FOR INSTANT DISPLAY
+  List<FuelStation> _getInitialMocks() {
+    final List<FuelStation> mocks = [];
+    final brands = ['PTR', 'SHL', 'CAL', 'SEA', 'PHX', 'UNI', 'CLN'];
+    final names = ['Gas Station', 'Fuel Hub', 'Express Fill', 'Neighborhood Gas', 'Highway Fuel'];
+    final baseGps = const LatLng(14.5995, 120.9842); // Default Manila center
+    
+    for (int i = 0; i < 12; i++) {
+      final latOffset = (i * 0.003) - 0.015;
+      final lonOffset = ((i % 4) * 0.004) - 0.008;
+      final brand = brands[i % brands.length];
+      
+      mocks.add(FuelStation(
+        id: 'initial_mock_$i',
+        brand: brand,
+        name: '${names[i % names.length]} $brand',
+        address: 'Nearby Area',
+        location: LatLng(baseGps.latitude + latOffset, baseGps.longitude + lonOffset),
+        lastUpdated: DateTime.now(),
+        status: StationStatus.active,
+        prices: {
+          'Premium 95': 85.51 + (i % 2),
+          'Unleaded 91': 84.51 + (i % 3),
+          'Diesel': 85.86 - (i % 2),
+        },
+      ));
+    }
+    return mocks;
+  }
 
   Map<String, double> _doePrices = {
     'Premium 97': 94.91,
@@ -49,7 +79,10 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
     super.initState();
     _initializeDoeDate();
     
-    // Load pins immediately using default location first
+    // START WITH PRE-LOADED PINS IMMEDIATELY
+    _stations = _getInitialMocks();
+    
+    // Load fresh data in parallel
     _loadStations();
     
     // Then try to get real location and refresh
@@ -252,12 +285,9 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
         builder: (context, snapshot) {
           final communityReports = snapshot.data ?? [];
           
-          // ULTRA-SAFE FALLBACK: If map is empty during build, force mocks
-          if (_stations.isEmpty && !_loading) {
-            WidgetsBinding.instance.addPostFrameCallback((_) => _generateMockStations());
-          }
+          final baseList = _stations.isEmpty ? _getInitialMocks() : _stations;
 
-          final allMerged = _stations.map((base) {
+          final allMerged = baseList.map((base) {
             try {
               final report = communityReports.firstWhere((r) => r.id == base.id);
               return FuelStation(
