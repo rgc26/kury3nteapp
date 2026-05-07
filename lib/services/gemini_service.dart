@@ -37,6 +37,12 @@ class GeminiService {
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
       apiKey: apiKey,
+      generationConfig: GenerationConfig(
+        temperature: 0.1,
+        topP: 0.95,
+        topK: 40,
+        outputMimeType: 'application/json',
+      ),
     );
   }
 
@@ -79,18 +85,24 @@ Estimated monthly bill: ₱${estimatedMonthlyBill.toStringAsFixed(0)}.
 
     try {
       final prompt = '''
-You are a highly accurate Home Appliance Scanner for an energy audit app in the Philippines.
-Identify the main appliance in this image. 
+You are an expert Home Appliance Scanner for an energy audit app.
+Analyze this image and identify the appliance. You MUST provide a best guess.
 
-Rules:
-1. Identify common items: Electric Fan, Laptop, TV, Refrigerator, Aircon, Rice Cooker, etc.
-2. If it's a fan, call it "Electric Fan".
-3. Return a JSON object with:
-"name": Descriptive name (e.g., "Standard Electric Fan").
-"wattage": Typical Meralco wattage in Watts (int).
-"icon_key": One of: "ac", "tv", "ref", "fan", "wash", "cook", "pc", "other".
+Categories to look for:
+- "pc": Laptops (MacBook, Windows), Desktop PC, Monitor.
+- "fan": Desk fans, Stand fans, Ceiling fans.
+- "tv": LED TV, Smart TV.
+- "ref": Refrigerator, Freezer.
+- "ac": Window AC, Split-type AC.
+- "cook": Rice cooker, Microwave, Oven.
+- "wash": Washing machine, Dryer.
 
-Response MUST be ONLY the JSON object. No extra text.
+Return ONLY a JSON object:
+{
+  "name": "Specific Name (e.g., Slim Laptop)",
+  "wattage": 65, 
+  "icon_key": "pc"
+}
 ''';
 
       debugPrint('Gemini: Starting image analysis... (Bytes: ${imageBytes.length})');
