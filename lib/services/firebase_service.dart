@@ -67,8 +67,8 @@ class FirebaseService {
   /// Uploads an image to Cloudinary (Alternative to Firebase Storage)
   /// Requires Cloudinary Cloud Name and Unsigned Upload Preset
   Future<String?> uploadToCloudinary(Uint8List bytes) async {
-    const cloudName = 'dqy6kurye'; // Placeholder: Ideally move to .env
-    const uploadPreset = 'kuryente_uploads'; 
+    const cloudName = 'dm7x0aibx'; 
+    const uploadPreset = 'ml_default'; 
 
     final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
     final request = http.MultipartRequest('POST', uri)
