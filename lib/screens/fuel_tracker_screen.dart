@@ -25,7 +25,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   LatLng _userGps = const LatLng(14.5995, 120.9842); // Default to Manila
   
   List<FuelStation> _stations = [];
-  bool _loading = false; // Start as false so pins show up immediately
+  bool _loading = false;
   FuelStation? _selected;
   String _filterBrand = 'ALL';
   bool _isPriceMode = false;
@@ -34,31 +34,26 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   List<LatLng> _routePoints = [];
   final List<String> _brands = ['ALL', 'PTR', 'SHL', 'CAL', 'SEA', 'PHX', 'UNI', 'CLN'];
 
-  // PRE-LOADED MOCKS FOR INSTANT DISPLAY
-  List<FuelStation> _getInitialMocks() {
+  // EMERGENCY PINS - PRE-LOADED IN DATA LAYER
+  static List<FuelStation> _getStaticMocks() {
     final List<FuelStation> mocks = [];
     final brands = ['PTR', 'SHL', 'CAL', 'SEA', 'PHX', 'UNI', 'CLN'];
     final names = ['Gas Station', 'Fuel Hub', 'Express Fill', 'Neighborhood Gas', 'Highway Fuel'];
-    final baseGps = const LatLng(14.5995, 120.9842); // Default Manila center
+    final baseGps = const LatLng(14.5995, 120.9842);
     
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 15; i++) {
       final latOffset = (i * 0.003) - 0.015;
-      final lonOffset = ((i % 4) * 0.004) - 0.008;
+      final lonOffset = ((i % 5) * 0.004) - 0.01;
       final brand = brands[i % brands.length];
-      
       mocks.add(FuelStation(
-        id: 'initial_mock_$i',
+        id: 'static_$i',
         brand: brand,
         name: '${names[i % names.length]} $brand',
         address: 'Nearby Area',
         location: LatLng(baseGps.latitude + latOffset, baseGps.longitude + lonOffset),
         lastUpdated: DateTime.now(),
         status: StationStatus.active,
-        prices: {
-          'Premium 95': 85.51 + (i % 2),
-          'Unleaded 91': 84.51 + (i % 3),
-          'Diesel': 85.86 - (i % 2),
-        },
+        prices: {'Premium 95': 85.51, 'Unleaded 91': 84.51, 'Diesel': 85.86},
       ));
     }
     return mocks;
@@ -79,18 +74,11 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
     super.initState();
     _initializeDoeDate();
     
-    // START WITH PRE-LOADED PINS IMMEDIATELY
-    _stations = _getInitialMocks();
+    // ABSOLUTE INITIALIZATION
+    _stations = _getStaticMocks();
     
-    // Load fresh data in parallel
     _loadStations();
-    
-    // Then try to get real location and refresh
-    _requestRealLocation().then((_) {
-      _loadStations(); // Refresh with real location
-    });
-
-    // Fetch prices in background
+    _requestRealLocation().then((_) => _loadStations());
     _fetchDoePrices();
   }
 
@@ -313,6 +301,8 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           return Stack(children: [
             _buildMap(filteredStations),
             
+            // DEBUG COUNTER (HIDDEN)
+            Positioned(top: 5, left: 5, child: Text('DP: ${filteredStations.length}', style: const TextStyle(color: Colors.white10, fontSize: 8))),
             // TOP CONTROLS
             Positioned(top: 10, left: 10, right: 10, child: Row(children: [
               Container(
@@ -401,13 +391,18 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           )
         ]),
         MarkerLayer(markers: [
-          Marker(point: _userGps, width: 40, height: 40, child: const Icon(Icons.my_location, color: Colors.blue, size: 30)),
+          Marker(
+            point: _userGps, 
+            width: 40, 
+            height: 40, 
+            child: const Icon(Icons.my_location, color: Colors.blue, size: 30),
+          ),
           ...stations.map((s) => Marker(
             point: s.location,
-            width: 100, // LARGER HITBOX
-            height: 60,  // LARGER HITBOX
+            width: 100,
+            height: 60,
             child: GestureDetector(
-              behavior: HitTestBehavior.opaque, // ENSURE CLICKS ARE CAPTURED
+              behavior: HitTestBehavior.opaque,
               onTap: () {
                 setState(() => _selected = s);
                 _mapController.move(s.location, 16);
