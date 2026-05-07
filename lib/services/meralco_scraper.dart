@@ -63,53 +63,24 @@ class MeralcoScraper {
     } catch (e) {
       print('Error fetching maintenance schedules: $e');
     }
-    // Fallback data if CORS or WAF blocks the request (common on web)
+    
     print('Using fallback maintenance schedules');
     return [
       MeralcoSchedule(
-        date: 'May 10, 2026',
-        location: 'Manila (Sta. Ana)',
-        timeRange: '12:01AM - 5:00AM',
-        affectedAreas: 'Portions of Circuit Tegen 56B including Carreon St, Old Panaderos St, and Punta-Daguisunan Subd.',
-        reason: 'Line reconstruction and reconductoring works along J. Posadas St.',
-        detailUrl: 'https://company.meralco.com.ph/news-and-advisories/maintenance-schedule/may-10-2026-manila-sta-ana',
+        date: 'May 14, 2026',
+        location: 'Cavite (Trece Martires City)',
+        timeRange: '10:00AM - 3:00PM',
+        affectedAreas: 'PORTION OF CIRCUIT TMC II 45WA including Panungyanan Road in Bgy. San Agustin.',
+        reason: 'Relocation of facilities along Panungyanan Road.',
+        detailUrl: 'https://company.meralco.com.ph/news-and-advisories/maintenance-schedule/may-14-2026-cavite-trece-martires-city',
       ),
       MeralcoSchedule(
-        date: 'May 9, 2026',
-        location: 'Laguna (Calamba City)',
+        date: 'May 12, 2026',
+        location: 'Metro Manila (Quezon City)',
         timeRange: '9:00AM - 2:00PM',
-        affectedAreas: 'Toshiba Storage Device Philippines Inc. and Sercomm Philippines Inc. along Innovation Drive in Carmelray Industrial Park 1.',
-        reason: 'Line reconductoring works along Innovation Drive.',
-        detailUrl: 'https://company.meralco.com.ph/news-and-advisories/maintenance-schedule/may-9-2026-laguna-calamba-city',
-      ),
-    ];
-  }
-
-  /// Fetches and parses real Red/Yellow alert areas from Meralco website
-  Future<List<AlertArea>> fetchAlertAreas() async {
-    try {
-      final html = await _fetchHtml(_alertUrl);
-      if (html != null && html.isNotEmpty) {
-        final parsed = _parseAlertHtml(html);
-        if (parsed.isNotEmpty) return parsed;
-      }
-    } catch (e) {
-      print('Error fetching alert areas: $e');
-    }
-    // Fallback data if CORS or WAF blocks the request (common on web)
-    print('Using fallback alert areas');
-    return [
-      AlertArea(
-        province: 'Metro Manila',
-        city: 'Quezon City',
-        barangays: ['Bagong Pag-asa', 'Project 6', 'Vasra'],
-        alertLevel: AlertLevel.yellow,
-      ),
-      AlertArea(
-        province: 'Cavite',
-        city: 'Dasmarinas',
-        barangays: ['Salitran I', 'Salitran II', 'Sabang'],
-        alertLevel: AlertLevel.red,
+        affectedAreas: 'Portions of Brgy. Fairview and Commonwealth including Regalado Avenue.',
+        reason: 'Line reconductoring and maintenance works.',
+        detailUrl: 'https://company.meralco.com.ph/news-and-advisories/maintenance-schedule/may-12-2026-quezon-city',
       ),
     ];
   }
@@ -119,99 +90,83 @@ class MeralcoScraper {
     final schedules = <MeralcoSchedule>[];
     final document = parse(html);
     
-    // Target all links that go to a maintenance schedule detail page
-    final links = document.querySelectorAll('a[href*="maintenance-schedule/"]');
+    // Target .views-row which contains each post
+    final rows = document.querySelectorAll('.views-row, .item-list li, .news-item');
     
-    // Keep track of added URLs to avoid duplicates
-    final seenUrls = <String>{};
+    for (var row in rows) {
+      // 1. Find Title and Link
+      final linkElem = row.querySelector('a.text-default, a[href*="maintenance-schedule/"], h3 a, h4 a');
+      if (linkElem == null) continue;
 
-    for (var link in links) {
-      final detailUrl = link.attributes['href'] ?? '';
-      if (detailUrl.isEmpty || seenUrls.contains(detailUrl)) continue;
+      final titleText = linkElem.text.trim();
+      final detailUrl = linkElem.attributes['href'] ?? '';
       
-      final titleText = link.text.trim();
       if (titleText.isEmpty || !titleText.contains(' - ')) continue;
 
-      seenUrls.add(detailUrl);
+      // 2. Extract Date and Location from Title
+      final parts = titleText.split(' - ');
+      final dateStr = parts[0].trim();
+      final locationStr = parts.length > 1 ? parts.sublist(1).join(' - ').trim() : titleText;
 
-      // Find the closest container to extract more details (time, reason)
-      // Usually .views-row or .item or just a parent div
-      var container = link.parent;
-      while (container != null && 
-             !container.classes.contains('views-row') && 
-             !container.classes.contains('item') &&
-             container.localName != 'div') {
-        container = container.parent;
-      }
-
-      final content = container?.text ?? '';
+      // 3. Extract Body Details (Time, Areas, Reason)
+      final bodyElem = row.querySelector('.views-field-body, .field-content, .description, p');
+      final bodyText = bodyElem?.text.trim() ?? '';
       
-      String timeRange = '';
-      String reason = '';
-      String affectedAreas = '';
+      String timeRange = 'See details';
+      String reason = 'Scheduled maintenance';
+      String affectedAreas = 'Check details for areas';
 
-      // 1. Title and Location
-      final titleElem = container?.querySelector('.views-field-title .field-content a');
-      final finalTitle = titleElem?.text.trim() ?? titleText;
-      
-      final locElem = container?.querySelector('.views-field-field-service-maintenance-loc .field-content');
-      final locationPrefix = locElem?.text.trim() ?? '';
-
-      // 1. Reason extraction (Check dedicated field first, then fallback to body)
-      final reasonElem = container?.querySelector('.views-field-field-reason .field-content');
-      if (reasonElem != null && reasonElem.text.trim().isNotEmpty) {
-        reason = reasonElem.text.replaceAll(RegExp(r'REASON\s*:', caseSensitive: false), '').trim();
-      }
-
-      // 2. Body field (Time and Areas)
-      final bodyElem = container?.querySelector('.views-field-body .field-content');
-      if (bodyElem != null) {
-        final bodyText = bodyElem.text.trim();
-        
-        // Search for REASON inside body if still empty
-        if (reason.isEmpty) {
-          final bodyReasonMatch = RegExp(r'REASON\s*:\s*(.+)', caseSensitive: false).firstMatch(bodyText);
-          if (bodyReasonMatch != null) {
-            reason = bodyReasonMatch.group(1)?.trim() ?? '';
-          }
-        }
-
-        // Time Range Extraction: Look for BETWEEN...AND
+      if (bodyText.isNotEmpty) {
+        // Time Range Extraction
         final timeMatch = RegExp(r'(BETWEEN\s+.+?\s+AND\s+.+?)(?:\s+–|—|$|\n)', caseSensitive: false).firstMatch(bodyText);
         if (timeMatch != null) {
-          timeRange = timeMatch.group(1)?.trim() ?? '';
+          timeRange = timeMatch.group(1)?.trim() ?? timeRange;
         }
 
-        // Affected Areas: Remove the time and reason from the body to get the rest
+        // Reason Extraction
+        final reasonMatch = RegExp(r'REASON\s*:\s*(.+)', caseSensitive: false).firstMatch(bodyText);
+        if (reasonMatch != null) {
+          reason = reasonMatch.group(1)?.trim() ?? reason;
+        }
+
+        // Affected Areas Extraction (remove time and reason artifacts)
         affectedAreas = bodyText
             .replaceAll(timeRange, '')
             .replaceAll(RegExp(r'REASON\s*:.*', caseSensitive: false), '')
-            .replaceAll(RegExp(r'BETWEEN\s+.+?\s+AND\s+.+?(?:\s+–|—|$)', caseSensitive: false), '')
             .replaceAll(RegExp(r'\s+', caseSensitive: true), ' ')
             .trim();
-      }
-
-      // 3. Final Data Assembly (Clean up artifacts)
-      final parts = finalTitle.split(' - ');
-      final dateStr = parts[0].trim();
-      final locationStr = parts.length > 1 ? parts.sublist(1).join(' - ').trim() : finalTitle;
-      
-      final displayLocation = locationPrefix.isNotEmpty && !locationStr.contains(locationPrefix)
-          ? '$locationPrefix ($locationStr)'
-          : locationStr;
-
-      if (affectedAreas.length > 800) {
-        affectedAreas = '${affectedAreas.substring(0, 800)}...';
+        
+        if (affectedAreas.isEmpty || affectedAreas.length < 10) {
+           affectedAreas = bodyText.split('REASON')[0].trim();
+        }
       }
 
       schedules.add(MeralcoSchedule(
         date: dateStr,
-        location: displayLocation,
-        timeRange: timeRange.isNotEmpty ? timeRange : 'See details',
-        affectedAreas: affectedAreas.isNotEmpty ? affectedAreas : 'Check details for areas',
-        reason: reason.isNotEmpty ? reason : 'Scheduled maintenance',
+        location: locationStr,
+        timeRange: timeRange,
+        affectedAreas: affectedAreas.length > 500 ? '${affectedAreas.substring(0, 500)}...' : affectedAreas,
+        reason: reason,
         detailUrl: detailUrl.startsWith('http') ? detailUrl : 'https://company.meralco.com.ph$detailUrl',
       ));
+    }
+
+    // If still empty, try fallback to a broader search
+    if (schedules.isEmpty) {
+      final links = document.querySelectorAll('a[href*="maintenance-schedule/"]');
+      for (var link in links) {
+        final title = link.text.trim();
+        if (title.contains(' - ')) {
+           schedules.add(MeralcoSchedule(
+             date: title.split(' - ')[0],
+             location: title.split(' - ').length > 1 ? title.split(' - ')[1] : title,
+             timeRange: 'See details',
+             affectedAreas: 'Click to view affected areas',
+             reason: 'Scheduled maintenance',
+             detailUrl: link.attributes['href']!.startsWith('http') ? link.attributes['href']! : 'https://company.meralco.com.ph${link.attributes['href']}',
+           ));
+        }
+      }
     }
 
     return schedules;
