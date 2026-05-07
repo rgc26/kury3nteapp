@@ -40,9 +40,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const Row(children: [Text('📊 ', style: TextStyle(fontSize: 22)), Text('Crisis Dashboard')]),
       ),
       body: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Readiness Score
-        _buildReadinessSection(),
-        const SizedBox(height: 20),
         // Outage History Chart
         _buildOutageHistoryChart(),
         const SizedBox(height: 20),

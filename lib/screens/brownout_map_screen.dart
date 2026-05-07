@@ -22,7 +22,6 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
   final MapController _mapController = MapController();
   final FirebaseService _firebaseService = FirebaseService();
   
-  bool _showHeatmap = false;
   OutageReport? _selected;
   late AnimationController _pulse;
   
@@ -119,9 +118,6 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
                 retinaMode: true,
                 maxZoom: 20,
               ),
-              
-              if (_showHeatmap) CircleLayer(circles: _outages.where((o) => o.status == OutageStatus.nopower)
-                .map((o) => CircleMarker(point: o.location, radius: 40, color: AppColors.danger.withAlpha(40), borderColor: AppColors.danger.withAlpha(80), borderStrokeWidth: 1)).toList()),
                 
               MarkerLayer(markers: [
                 ..._outages.map(_marker),
@@ -193,10 +189,7 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
               ),
             )),
             
-            // Controls
             Positioned(top: MediaQuery.of(context).padding.top + 70, right: 16, child: Column(children: [
-              _ctrlBtn(Icons.layers, 'Heat', _showHeatmap, () => setState(() => _showHeatmap = !_showHeatmap)),
-              const SizedBox(height: 8),
               _ctrlBtn(Icons.my_location, 'Me', false, _requestRealLocation),
             ])),
             
