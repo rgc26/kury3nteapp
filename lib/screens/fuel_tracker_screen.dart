@@ -222,7 +222,6 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
       _loading = false;
     });
   }
-  }
 
   String _detectBrand(String name) {
     final n = name.toLowerCase();
@@ -351,7 +350,6 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
       ),
       children: [
         TileLayer(
-          // Using the modern Google Maps style for better readability
           urlTemplate: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
           subdomains: const ['0', '1', '2', '3'],
           userAgentPackageName: 'org.kuryente.app',
@@ -370,10 +368,14 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           Marker(point: _userGps, width: 40, height: 40, child: const Icon(Icons.my_location, color: Colors.blue, size: 30)),
           ...stations.map((s) => Marker(
             point: s.location,
-            width: 80,
-            height: 40,
+            width: 100, // LARGER HITBOX
+            height: 60,  // LARGER HITBOX
             child: GestureDetector(
-              onTap: () => setState(() => _selected = s),
+              behavior: HitTestBehavior.opaque, // ENSURE CLICKS ARE CAPTURED
+              onTap: () {
+                setState(() => _selected = s);
+                _mapController.move(s.location, 16);
+              },
               child: _buildBayanihanMarker(s),
             ),
           )),
