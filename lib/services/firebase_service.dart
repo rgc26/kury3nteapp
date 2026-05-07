@@ -56,6 +56,46 @@ class FirebaseService {
     await incrementUserPoints(15);
   }
 
+  /// Listen to current user profile data (Points, Photo, etc)
+  Stream<Map<String, dynamic>> getUserProfileStream() {
+    final uid = currentUser?.uid;
+    if (uid == null) return Stream.value({});
+    
+    return _db.collection('users').doc(uid).snapshots().map((doc) => doc.data() ?? {});
+  }
+
+  /// Uploads an image to Cloudinary (Alternative to Firebase Storage)
+  /// Requires Cloudinary Cloud Name and Unsigned Upload Preset
+  Future<String?> uploadToCloudinary(Uint8List bytes) async {
+    const cloudName = 'dqy6kurye'; // Placeholder: Ideally move to .env
+    const uploadPreset = 'kuryente_uploads'; 
+
+    final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['upload_preset'] = uploadPreset
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: 'profile.jpg'));
+
+    final response = await request.send();
+    if (response.statusCode == 200) {
+      final resData = await response.stream.bytesToString();
+      final json = jsonDecode(resData);
+      final url = json['secure_url'] as String;
+      
+      // Update Firestore profile
+      final uid = currentUser?.uid;
+      if (uid != null) {
+        await _db.collection('users').doc(uid).set({
+          'photoUrl': url,
+        }, SetOptions(merge: true));
+        
+        // Also update Firebase Auth profile for consistency
+        await currentUser?.updatePhotoURL(url);
+      }
+      return url;
+    }
+    return null;
+  }
+
   /// Listen to current user points for gamification (Bayanihan Points)
   Stream<int> getUserPointsStream() {
     final uid = currentUser?.uid;

@@ -8,6 +8,7 @@ import 'screens/energy_audit_screen.dart';
 import 'screens/alerts_screen.dart';
 import 'screens/bayanihan_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/profile_screen.dart';
 import 'screens/history_screen.dart';
 import 'services/firebase_service.dart';
 import 'models/outage_report.dart';
@@ -220,10 +221,13 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
         backgroundColor: AppColors.surface,
         child: Column(
           children: [
-            StreamBuilder<int>(
-              stream: firebaseService.getUserPointsStream(),
+            StreamBuilder<Map<String, dynamic>>(
+              stream: firebaseService.getUserProfileStream(),
               builder: (context, snapshot) {
-                final points = snapshot.data ?? 0;
+                final profile = snapshot.data ?? {};
+                final points = profile['points'] ?? 0;
+                final photoUrl = profile['photoUrl'] as String?;
+                
                 String rank = 'Newbie Bayani';
                 Color rankColor = Colors.grey;
                 if (points >= 50) { rank = 'Bronze Bayani'; rankColor = Colors.orange; }
@@ -235,8 +239,9 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   decoration: const BoxDecoration(color: AppColors.primary),
                   currentAccountPicture: CircleAvatar(
                     backgroundColor: Colors.white,
-                    child: Text(user?.displayName?[0] ?? user?.email?[0] ?? '?', 
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                    backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                    child: photoUrl == null ? Text(user?.displayName?[0] ?? user?.email?[0] ?? '?', 
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)) : null,
                   ),
                   accountName: Text(user?.displayName ?? 'Kuryente User', style: const TextStyle(fontWeight: FontWeight.bold)),
                   accountEmail: Row(children: [
@@ -267,7 +272,11 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
             ListTile(
               leading: const Icon(Icons.person_outline),
               title: const Text('Profile'),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                // Open Profile Screen
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) => ProfileScreen(storage: widget.storage)));
+              },
             ),
             ListTile(
               leading: const Icon(Icons.settings_outlined),
