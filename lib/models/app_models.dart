@@ -41,7 +41,7 @@ class BayanihanPost {
   final String authorId;
   final String authorName;
   final List<String> interestedUserIds;
-  final List<String> salamatUserIds;
+  final int commentCount;
 
   BayanihanPost({
     required this.id,
@@ -56,6 +56,7 @@ class BayanihanPost {
     this.authorName = 'Bayani',
     this.interestedUserIds = const [],
     this.salamatUserIds = const [],
+    this.commentCount = 0,
   });
 
   int get interestedCount => interestedUserIds.length;
@@ -92,6 +93,7 @@ class BayanihanPost {
     'authorName': authorName,
     'interestedUserIds': interestedUserIds,
     'salamatUserIds': salamatUserIds,
+    'commentCount': commentCount,
   };
 
   factory BayanihanPost.fromJson(Map<String, dynamic> json) {
@@ -117,6 +119,7 @@ class BayanihanPost {
       authorName: json['authorName'] ?? 'Bayani',
       interestedUserIds: List<String>.from(json['interestedUserIds'] ?? []),
       salamatUserIds: List<String>.from(json['salamatUserIds'] ?? []),
+      commentCount: json['commentCount'] ?? 0,
     );
   }
 }

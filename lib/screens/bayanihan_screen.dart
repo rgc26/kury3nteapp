@@ -120,37 +120,89 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
       ])),
       const SizedBox(height: 12),
       Row(children: [
-        _reactionBtn('🙋 Interested', p.interestedCount, isInterested, () => _firebaseService.reactToBayanihanPost(p, 'interested')),
+        _reactionBtn('🙋 Interested', p.interestedCount, isInterested, 
+          onTap: () => _firebaseService.reactToBayanihanPost(p, 'interested'),
+          onCountTap: () => _showReactedUsers(p.interestedUserIds, 'Interested Bayanis'),
+        ),
         const SizedBox(width: 12),
-        _reactionBtn('🙏 Salamat', p.salamatCount, isSalamat, () => _firebaseService.reactToBayanihanPost(p, 'salamat')),
+        _reactionBtn('🙏 Salamat', p.salamatCount, isSalamat, 
+          onTap: () => _firebaseService.reactToBayanihanPost(p, 'salamat'),
+          onCountTap: () => _showReactedUsers(p.salamatUserIds, 'Salamat from...'),
+        ),
         const Spacer(),
         TextButton.icon(
           icon: const Icon(Icons.comment_outlined, size: 14), 
-          label: const Text('Comments', style: TextStyle(fontSize: 11)), 
+          label: Text('Comments ${p.commentCount > 0 ? "(${p.commentCount})" : ""}', style: const TextStyle(fontSize: 11)), 
           onPressed: () => _showComments(p),
         ),
       ]),
     ])));
   }
 
-  Widget _reactionBtn(String label, int count, bool isActive, VoidCallback onTap) => InkWell(
-    onTap: onTap, borderRadius: BorderRadius.circular(20),
-    child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isActive ? AppColors.primary.withAlpha(30) : AppColors.surfaceLight, 
-        borderRadius: BorderRadius.circular(20), 
-        border: Border.all(color: isActive ? AppColors.primary : AppColors.border)
-      ),
-      child: Text(
-        '$label ($count)', 
-        style: TextStyle(
-          fontSize: 11, 
-          color: isActive ? AppColors.primary : AppColors.textPrimary,
-          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-        )
-      ),
+  Widget _reactionBtn(String label, int count, bool isActive, {required VoidCallback onTap, required VoidCallback onCountTap}) => Container(
+    decoration: BoxDecoration(
+      color: isActive ? AppColors.primary.withAlpha(30) : AppColors.surfaceLight, 
+      borderRadius: BorderRadius.circular(20), 
+      border: Border.all(color: isActive ? AppColors.primary : AppColors.border)
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: onTap, 
+          borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 12, right: 6, top: 6, bottom: 6),
+            child: Text(label, style: TextStyle(fontSize: 11, color: isActive ? AppColors.primary : AppColors.textPrimary, fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
+          ),
+        ),
+        const VerticalDivider(width: 1, thickness: 1),
+        InkWell(
+          onTap: onCountTap,
+          borderRadius: const BorderRadius.horizontal(right: Radius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 6, right: 12, top: 6, bottom: 6),
+            child: Text('$count', style: TextStyle(fontSize: 11, color: isActive ? AppColors.primary : AppColors.textMuted, fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ],
     ),
   );
+
+  void _showReactedUsers(List<String> uids, String title) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 16),
+            FutureBuilder<List<Map<String, String>>>(
+              future: _firebaseService.getUserNames(uids),
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                final users = snap.data ?? [];
+                if (users.isEmpty) return const Padding(padding: EdgeInsets.all(20), child: Text('No reactions yet.'));
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: users.length,
+                  itemBuilder: (_, i) => ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.person, size: 16)),
+                    title: Text(users[i]['name']!, style: const TextStyle(fontSize: 14)),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   void _showComments(BayanihanPost p) {
     final TextEditingController commentCtrl = TextEditingController();
@@ -196,22 +248,32 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
               Padding(
                 padding: const EdgeInsets.only(bottom: 20, top: 10),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Expanded(
                       child: TextField(
                         controller: commentCtrl,
-                        decoration: const InputDecoration(hintText: 'Add a comment...', border: OutlineInputBorder()),
-                        maxLines: 2,
+                        decoration: InputDecoration(
+                          hintText: 'Add a comment...',
+                          filled: true,
+                          fillColor: AppColors.surfaceLight,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                        ),
+                        maxLines: null,
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    IconButton(
-                      icon: const Icon(Icons.send, color: AppColors.primary),
-                      onPressed: () async {
-                        if (commentCtrl.text.trim().isEmpty) return;
-                        await _firebaseService.addCommentToPost(p, commentCtrl.text.trim());
-                        commentCtrl.clear();
-                      },
+                    const SizedBox(width: 8),
+                    Container(
+                      decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                      child: IconButton(
+                        icon: const Icon(Icons.send, color: AppColors.background, size: 20),
+                        onPressed: () async {
+                          if (commentCtrl.text.trim().isEmpty) return;
+                          await _firebaseService.addCommentToPost(p, commentCtrl.text.trim());
+                          commentCtrl.clear();
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -339,26 +401,39 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
           TextField(decoration: const InputDecoration(hintText: 'Location', prefixIcon: Icon(Icons.location_on, size: 18)), onChanged: (v) => location = v),
           const SizedBox(height: 10),
           TextField(decoration: const InputDecoration(hintText: 'Availability (e.g., 8AM-5PM)', prefixIcon: Icon(Icons.schedule, size: 18)), onChanged: (v) => avail = v),
-          const SizedBox(height: 20),
-          SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: () async {
-            if (title.isEmpty || desc.isEmpty) return;
-            final post = BayanihanPost(
-              id: '', 
-              category: cat, 
-              title: title, 
-              description: desc,
-              location: location.isNotEmpty ? location : null, 
-              availability: avail.isNotEmpty ? avail : null, 
-              createdAt: DateTime.now(),
-              authorId: _firebaseService.currentUser?.uid ?? 'unknown',
-              authorName: _firebaseService.currentUser?.displayName ?? 'Bayani',
-            );
-            await _firebaseService.submitBayanihanPost(post);
-            if (mounted) {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Post created! Salamat sa Bayanihan! 🤝')));
-            }
-          }, icon: const Icon(Icons.send), label: const Text('Post'))),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity, 
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                if (title.isEmpty || desc.isEmpty) return;
+                final post = BayanihanPost(
+                  id: '', 
+                  category: cat, 
+                  title: title, 
+                  description: desc,
+                  location: location.isNotEmpty ? location : null, 
+                  availability: avail.isNotEmpty ? avail : null, 
+                  createdAt: DateTime.now(),
+                  authorId: _firebaseService.currentUser?.uid ?? 'unknown',
+                  authorName: _firebaseService.currentUser?.displayName ?? 'Bayani',
+                );
+                await _firebaseService.submitBayanihanPost(post);
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Post created! Salamat sa Bayanihan! 🤝')));
+                }
+              }, 
+              icon: const Icon(Icons.send), 
+              label: const Text('Post', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.background,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
         ])),
       ),

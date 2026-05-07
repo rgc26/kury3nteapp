@@ -216,6 +216,7 @@ class FirebaseService {
     data['createdAt'] = FieldValue.serverTimestamp();
     data['interestedUserIds'] = [];
     data['salamatUserIds'] = [];
+    data['commentCount'] = 0;
     await _db.collection('bayanihan').add(data);
     await incrementUserPoints(20);
   }
@@ -233,13 +234,9 @@ class FirebaseService {
 
       final existingIds = List<String>.from(snap.data()?[field] ?? []);
       if (existingIds.contains(uid)) {
-        // Remove reaction if already exists (Toggle behavior)
         tx.update(docRef, {field: FieldValue.arrayRemove([uid])});
       } else {
-        // Add reaction
         tx.update(docRef, {field: FieldValue.arrayUnion([uid])});
-        
-        // Notify author (if not self)
         if (post.authorId != uid) {
           await sendNotification(
             recipientId: post.authorId,
@@ -257,15 +254,19 @@ class FirebaseService {
     final user = currentUser;
     if (user == null) return;
 
-    final commentRef = _db.collection('bayanihan').doc(post.id).collection('comments').doc();
-    await commentRef.set({
-      'authorId': user.uid,
-      'authorName': user.displayName ?? 'Bayani',
-      'content': content,
-      'createdAt': FieldValue.serverTimestamp(),
+    final docRef = _db.collection('bayanihan').doc(post.id);
+    final commentRef = docRef.collection('comments').doc();
+
+    await _db.runTransaction((tx) async {
+      tx.set(commentRef, {
+        'authorId': user.uid,
+        'authorName': user.displayName ?? 'Bayani',
+        'content': content,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      tx.update(docRef, {'commentCount': FieldValue.increment(1)});
     });
 
-    // Notify author (if not self)
     if (post.authorId != user.uid) {
       await sendNotification(
         recipientId: post.authorId,
@@ -276,6 +277,23 @@ class FirebaseService {
       );
     }
     await incrementUserPoints(5);
+  }
+
+  Future<List<Map<String, String>>> getUserNames(List<String> uids) async {
+    if (uids.isEmpty) return [];
+    final chunks = <List<String>>[];
+    for (var i = 0; i < uids.length; i += 10) {
+      chunks.add(uids.sublist(i, i + 10 > uids.length ? uids.length : i + 10));
+    }
+    final List<Map<String, String>> results = [];
+    for (var chunk in chunks) {
+      final snap = await _db.collection('users').where(FieldPath.documentId, whereIn: chunk).get();
+      results.addAll(snap.docs.map((doc) => {
+        'id': doc.id,
+        'name': doc.data()['displayName'] as String? ?? 'Bayani',
+      }));
+    }
+    return results;
   }
 
   Stream<List<BayanihanComment>> getCommentsStream(String postId) {
