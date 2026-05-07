@@ -148,6 +148,31 @@ class FirebaseService {
       });
   }
 
+  /// Fetch active reports one-time (snapshot) for Watchlist checks
+  Future<List<OutageReport>> fetchActiveReports() async {
+    final limitDate = DateTime.now().subtract(const Duration(hours: 24));
+    try {
+      final snapshot = await _db.collection('outages').get();
+      return snapshot.docs.map((doc) {
+        try {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return OutageReport.fromJson(data);
+        } catch (e) {
+          return null;
+        }
+      })
+      .whereType<OutageReport>()
+      .where((report) {
+        if (report.status == OutageStatus.scheduled) return true;
+        return report.reportedAt.isAfter(limitDate);
+      }).toList();
+    } catch (e) {
+      debugPrint('Error fetching active reports: $e');
+      return [];
+    }
+  }
+
   /// Submit a new Bayanihan community post
   Future<void> submitBayanihanPost(BayanihanPost post) async {
     final user = currentUser;

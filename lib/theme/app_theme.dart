@@ -18,6 +18,11 @@ class AppTheme {
         onSurface: AppColors.textPrimary,
         onError: AppColors.textPrimary,
       ),
+      textSelectionTheme: TextSelectionThemeData(
+        selectionColor: AppColors.primary.withOpacity(0.2),
+        cursorColor: AppColors.primary,
+        selectionHandleColor: AppColors.primary,
+      ),
       fontFamily: 'Inter',
       textTheme: const TextTheme(
         displayLarge: TextStyle(
@@ -245,9 +250,15 @@ class AppTheme {
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textMuted,
         indicatorColor: AppColors.primary,
+        overlayColor: WidgetStatePropertyAll(Colors.transparent),
         labelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         unselectedLabelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
       ),
+      highlightColor: Colors.transparent,
+      splashColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      focusColor: Colors.transparent,
+      splashFactory: NoSplash.splashFactory,
     );
   }
 }

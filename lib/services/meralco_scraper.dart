@@ -8,69 +8,47 @@ import '../models/meralco_schedule.dart';
 /// Scrapes real Meralco maintenance schedules and alert areas from
 /// company.meralco.com.ph using multiple CORS proxy fallbacks for browser access.
 class MeralcoScraper {
-  /// Multiple CORS proxies to try in order — if one is down, try the next
-  static const List<_CorsProxy> _proxies = [
-    _CorsProxy(
-      url: 'https://api.allorigins.win/get?url=',
-      isJson: true,
-      contentKey: 'contents',
-    ),
-    _CorsProxy(
-      url: 'https://api.codetabs.com/v1/proxy?quest=',
-      isJson: false,
-    ),
-    _CorsProxy(
-      url: 'https://corsproxy.org/?',
-      isJson: false,
-    ),
-  ];
-
   static const String _maintenanceUrl =
       'https://company.meralco.com.ph/news-and-advisories/maintenance-schedule';
   static const String _alertUrl =
       'https://company.meralco.com.ph/news-and-advisories/yellow-and-red-alert-locations';
 
-  /// Fetches HTML content from a URL, trying multiple CORS proxies on web
   Future<String?> _fetchHtml(String targetUrl) async {
-    // On non-web platforms, try direct fetch first
-    if (!kIsWeb) {
+    final List<String> proxies = [
+      'https://corsproxy.io/?',                    // Often the most reliable
+      'https://api.allorigins.win/get?url=',
+      'https://proxy.cors.sh/',
+      'https://api.codetabs.com/v1/proxy?quest=',
+    ];
+
+    for (final proxyBase in proxies) {
       try {
+        final fullUrl = proxyBase.contains('allorigins')
+            ? '${proxyBase}${Uri.encodeComponent(targetUrl)}'
+            : '$proxyBase${Uri.encodeComponent(targetUrl)}';
+
+        print('Trying proxy: $proxyBase');
         final response = await http.get(
-          Uri.parse(targetUrl),
-        ).timeout(const Duration(seconds: 15));
+          Uri.parse(fullUrl),
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+        ).timeout(const Duration(seconds: 20));
+
         if (response.statusCode == 200) {
+          if (proxyBase.contains('allorigins')) {
+            final data = json.decode(response.body);
+            return data['contents'] as String?;
+          }
           return response.body;
         }
       } catch (e) {
-        print('Direct fetch failed, trying proxies: $e');
+        print('Proxy failed: $proxyBase → $e');
       }
     }
 
-    // Try each CORS proxy in order
-    for (final proxy in _proxies) {
-      try {
-        final proxyUrl = proxy.isJson
-            ? '${proxy.url}${Uri.encodeComponent(targetUrl)}'
-            : '${proxy.url}$targetUrl';
-
-        print('Trying proxy: ${proxy.url}');
-        final response = await http.get(
-          Uri.parse(proxyUrl),
-        ).timeout(const Duration(seconds: 15));
-
-        if (response.statusCode == 200) {
-          if (proxy.isJson) {
-            final jsonData = json.decode(response.body);
-            return jsonData[proxy.contentKey] as String? ?? '';
-          } else {
-            return response.body;
-          }
-        }
-        print('Proxy ${proxy.url} returned status ${response.statusCode}');
-      } catch (e) {
-        print('Proxy ${proxy.url} failed: $e');
-      }
-    }
+    // Fallback to hardcoded data
+    print('All proxies failed. Using fallback data.');
     return null;
   }
 
@@ -168,49 +146,67 @@ class MeralcoScraper {
 
       final content = container?.text ?? '';
       
-      // Parse date and location
-      final parts = titleText.split(' - ');
-      final date = parts[0].trim();
-      final location = parts.sublist(1).join(' - ').trim();
-
       String timeRange = '';
       String reason = '';
       String affectedAreas = '';
 
-      // Pattern for "BETWEEN 9:00 AM AND 2:00 PM"
-      final timeRegex = RegExp(r'BETWEEN\s+\d+[:\d]*\s*[AP]M\s+AND\s+\d+[:\d]*\s*[AP]M', caseSensitive: false);
-      final timeMatch = timeRegex.firstMatch(content);
-      if (timeMatch != null) {
-        timeRange = timeMatch.group(0) ?? '';
+      // 1. Title and Location
+      final titleElem = container?.querySelector('.views-field-title .field-content a');
+      final finalTitle = titleElem?.text.trim() ?? titleText;
+      
+      final locElem = container?.querySelector('.views-field-field-service-maintenance-loc .field-content');
+      final locationPrefix = locElem?.text.trim() ?? '';
+
+      // 1. Reason extraction (Check dedicated field first, then fallback to body)
+      final reasonElem = container?.querySelector('.views-field-field-reason .field-content');
+      if (reasonElem != null && reasonElem.text.trim().isNotEmpty) {
+        reason = reasonElem.text.replaceAll(RegExp(r'REASON\s*:', caseSensitive: false), '').trim();
       }
 
-      // Pattern for "REASON: ..."
-      final reasonRegex = RegExp(r'REASON:\s*(.+?)(?:$|\n|\.)', caseSensitive: false);
-      final reasonMatch = reasonRegex.firstMatch(content);
-      if (reasonMatch != null) {
-        reason = reasonMatch.group(1)?.trim() ?? '';
-      }
+      // 2. Body field (Time and Areas)
+      final bodyElem = container?.querySelector('.views-field-body .field-content');
+      if (bodyElem != null) {
+        final bodyText = bodyElem.text.trim();
+        
+        // Search for REASON inside body if still empty
+        if (reason.isEmpty) {
+          final bodyReasonMatch = RegExp(r'REASON\s*:\s*(.+)', caseSensitive: false).firstMatch(bodyText);
+          if (bodyReasonMatch != null) {
+            reason = bodyReasonMatch.group(1)?.trim() ?? '';
+          }
+        }
 
-      // affected areas
-      final bodyField = container?.querySelector('.views-field-body');
-      if (bodyField != null) {
-        affectedAreas = bodyField.text.trim();
-      } else {
-        affectedAreas = content
-            .replaceAll(titleText, '')
+        // Time Range Extraction: Look for BETWEEN...AND
+        final timeMatch = RegExp(r'(BETWEEN\s+.+?\s+AND\s+.+?)(?:\s+–|—|$|\n)', caseSensitive: false).firstMatch(bodyText);
+        if (timeMatch != null) {
+          timeRange = timeMatch.group(1)?.trim() ?? '';
+        }
+
+        // Affected Areas: Remove the time and reason from the body to get the rest
+        affectedAreas = bodyText
             .replaceAll(timeRange, '')
-            .replaceAll(RegExp(r'REASON:.*', caseSensitive: false), '')
-            .replaceAll(RegExp(r'View all.*', caseSensitive: false), '')
+            .replaceAll(RegExp(r'REASON\s*:.*', caseSensitive: false), '')
+            .replaceAll(RegExp(r'BETWEEN\s+.+?\s+AND\s+.+?(?:\s+–|—|$)', caseSensitive: false), '')
+            .replaceAll(RegExp(r'\s+', caseSensitive: true), ' ')
             .trim();
       }
 
-      if (affectedAreas.length > 500) {
-        affectedAreas = '${affectedAreas.substring(0, 500)}...';
+      // 3. Final Data Assembly (Clean up artifacts)
+      final parts = finalTitle.split(' - ');
+      final dateStr = parts[0].trim();
+      final locationStr = parts.length > 1 ? parts.sublist(1).join(' - ').trim() : finalTitle;
+      
+      final displayLocation = locationPrefix.isNotEmpty && !locationStr.contains(locationPrefix)
+          ? '$locationPrefix ($locationStr)'
+          : locationStr;
+
+      if (affectedAreas.length > 800) {
+        affectedAreas = '${affectedAreas.substring(0, 800)}...';
       }
 
       schedules.add(MeralcoSchedule(
-        date: date,
-        location: location,
+        date: dateStr,
+        location: displayLocation,
         timeRange: timeRange.isNotEmpty ? timeRange : 'See details',
         affectedAreas: affectedAreas.isNotEmpty ? affectedAreas : 'Check details for areas',
         reason: reason.isNotEmpty ? reason : 'Scheduled maintenance',
@@ -272,15 +268,3 @@ class MeralcoScraper {
   }
 }
 
-/// Helper class for CORS proxy configuration
-class _CorsProxy {
-  final String url;
-  final bool isJson;
-  final String contentKey;
-
-  const _CorsProxy({
-    required this.url,
-    this.isJson = false,
-    this.contentKey = 'contents',
-  });
-}
