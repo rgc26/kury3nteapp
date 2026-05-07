@@ -27,6 +27,11 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late final List<Widget> _screens;
   late AnimationController _fabAnimController;
+  
+  // Real-time In-App Notification State
+  final Set<String> _notifiedOutageIds = {};
+  final Map<String, String> _lastFuelStatuses = {};
+  bool _isFirstLoad = true;
 
   @override
   void initState() {
@@ -47,7 +52,118 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     // Check for Device Lock security
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkDeviceLock();
+      _initLiveAlerts();
     });
+  }
+
+  /// Monitors live data streams to show in-app alerts (Alternative to Cloud Push)
+  void _initLiveAlerts() {
+    final firebase = FirebaseService();
+
+    // 1. Monitor Outages
+    firebase.getOutagesStream().listen((outages) {
+      if (_isFirstLoad) return; // Don't alert for old data on start
+
+      for (var o in outages) {
+        // Rule: Alert if it just got verified (nopower) and we haven't shown it
+        if (o.status == OutageStatus.nopower && !_notifiedOutageIds.contains(o.id)) {
+          _notifiedOutageIds.add(o.id);
+          _showLiveAlert(
+            title: '🔴 Brownout Confirmed!',
+            body: 'Isang brownout ang nakumpirma sa ${o.barangay ?? "iyong lugar"}. Check the map now!',
+            icon: Icons.power_off,
+            color: AppColors.danger,
+            onTap: () => jumpToReport(o),
+          );
+        }
+      }
+    });
+
+    // 2. Monitor Fuel
+    firebase.getFuelStationsStream().listen((stations) {
+      if (_isFirstLoad) {
+        // Record initial statuses
+        for (var s in stations) { _lastFuelStatuses[s.id] = s.status.name; }
+        _isFirstLoad = false;
+        return;
+      }
+
+      for (var s in stations) {
+        final lastStatus = _lastFuelStatuses[s.id];
+        if (lastStatus != null && lastStatus != s.status.name) {
+          _lastFuelStatuses[s.id] = s.status.name;
+          
+          // Only alert for major improvements (Unknown -> Available)
+          if (s.status.name == 'available') {
+            _showLiveAlert(
+              title: '⛽ Fuel Update!',
+              body: '${s.name} is now AVAILABLE. Check prices on the map!',
+              icon: Icons.local_gas_station,
+              color: AppColors.success,
+              onTap: () => setState(() => _currentIndex = 1),
+            );
+          }
+        }
+      }
+    });
+  }
+
+  void _showLiveAlert({
+    required String title,
+    required String body,
+    required IconData icon,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 8),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: GestureDetector(
+          onTap: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            onTap?.call();
+          },
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color.withAlpha(100)),
+              boxShadow: [
+                BoxShadow(color: color.withAlpha(30), blurRadius: 15, spreadRadius: 2),
+                const BoxShadow(color: Colors.black45, blurRadius: 10),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: color.withAlpha(40), shape: BoxShape.circle),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+                      const SizedBox(height: 2),
+                      Text(body, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.white24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _checkDeviceLock() async {
