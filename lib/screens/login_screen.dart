@@ -70,22 +70,26 @@ class _LoginScreenState extends State<LoginScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.system_update_alt, color: AppColors.primary),
+            Icon(Icons.add_to_home_screen, color: AppColors.primary),
             SizedBox(width: 12),
-            Text('Best Experience'),
+            Text('Experience Kuryente ⚡', style: TextStyle(fontSize: 18)),
           ],
         ),
         content: const Text(
-          'For the best experience, including real-time alerts and offline access, please install the Kuryente App on your home screen.',
+          'For faster access to the brownout map and live community alerts, we recommend adding Kuryente to your home screen.',
           style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Maybe Later', style: TextStyle(color: Colors.grey)),
+          ),
           TextButton(
             onPressed: () async {
               await widget.storage.setPwaPromptDismissed(true);
               if (ctx.mounted) Navigator.of(ctx).pop();
             },
-            child: const Text('Don\'t show again', style: TextStyle(color: Colors.grey)),
+            child: const Text('Don\'t show again', style: TextStyle(color: Colors.white24, fontSize: 10)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -94,15 +98,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 js.context.callMethod('installPWA');
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please refresh or use a PWA-compatible browser! 🔄')),
+                  const SnackBar(content: Text('Use "Add to Home Screen" in your browser menu! 📲')),
                 );
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Download Now', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            child: const Text('Add to Home Screen'),
           ),
         ],
       ),
