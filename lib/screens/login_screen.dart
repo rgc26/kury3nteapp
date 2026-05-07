@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:js' as js;
 import '../theme/app_colors.dart';
 import '../services/firebase_service.dart';
-
 import '../services/storage_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -26,7 +25,6 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await widget.firebaseService.signInWithGoogle();
-      // The auth state listener in main.dart/app.dart will automatically handle the navigation
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -41,21 +39,16 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Show download warning on visit if not already dismissed and not already in standalone mode
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndShowDownloadWarning();
     });
   }
 
   void _checkAndShowDownloadWarning() {
-    // 1. Check if already running as a PWA (standalone)
     final isStandalone = js.context.callMethod('eval', [
       "window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true"
     ]) == true;
-
-    // 2. Check if user already dismissed it
     final isDismissed = widget.storage.isPwaPromptDismissed();
-
     if (!isStandalone && !isDismissed) {
       _showDownloadWarning();
     }
@@ -81,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 24),
             const Icon(Icons.install_mobile, color: AppColors.primary, size: 48),
             const SizedBox(height: 16),
-            const Text('Experience Kuryentahin ⚡', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+            const Text('Experience Kuryentahin \u26a1', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
             const SizedBox(height: 12),
             const Text(
               'Install the app for faster access to the live map and real-time community alerts.',
@@ -99,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     js.context.callMethod('installPWA');
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Use "Add to Home Screen" in your browser menu! 📲')),
+                      const SnackBar(content: Text('Use "Add to Home Screen" in your browser menu! \ud83d\udcf2')),
                     );
                   }
                 },
@@ -152,7 +145,6 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Responsive Logo Image
                   Container(
                     width: logoSize,
                     height: logoSize,
@@ -181,8 +173,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   SizedBox(height: screenHeight < 600 ? 24 : 32),
-                  
-                  // App Title & Tagline
                   const Text(
                     'Kuryentahin',
                     style: TextStyle(
@@ -202,31 +192,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  
                   SizedBox(height: screenHeight < 600 ? 40 : 64),
-
-              // Sign in button
-              if (_isLoading)
-                const CircularProgressIndicator(color: AppColors.primary)
-              else
-                ElevatedButton.icon(
-                  onPressed: _signInWithGoogle,
-                  icon: const Icon(Icons.login),
-                  label: const Text('Sign in with Google'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black87,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+                  if (_isLoading)
+                    const CircularProgressIndicator(color: AppColors.primary)
+                  else
+                    ElevatedButton.icon(
+                      onPressed: _signInWithGoogle,
+                      icon: const Icon(Icons.login),
+                      label: const Text('Sign in with Google'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black87,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              const SizedBox(height: 48),
-            ],
-          ),
-        ),
+                  const SizedBox(height: 48),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
