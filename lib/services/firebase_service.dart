@@ -101,45 +101,15 @@ class FirebaseService {
     }
   }
 
-  /// Listen to active outages (Community: last 24h | Official: Always)
+  /// Listen to active outages (Community: Since Midnight Today | Official: Always)
   Stream<List<OutageReport>> getOutagesStream() {
-    final limitDate = DateTime.now().subtract(const Duration(hours: 24));
-    print('DEBUG: Fetching outages since $limitDate');
+    // Rule: Community reports clear at midnight for a fresh start each day
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    
+    debugPrint('📡 Fetching active outages since midnight: $startOfToday');
     
     return _db.collection('outages')
-      .snapshots()
-      .map((snapshot) {
-        print('DEBUG: Received snapshot with ${snapshot.docs.length} documents');
-        final reports = snapshot.docs.map((doc) {
-          try {
-            final data = doc.data();
-            data['id'] = doc.id;
-            final report = OutageReport.fromJson(data);
-            
-            // Log each report for debugging
-            print('DEBUG: Found report ${report.id} at ${report.location.latitude}, ${report.location.longitude}, status: ${report.status.name}, reportedAt: ${report.reportedAt}');
-            
-            return report;
-          } catch (e) {
-            print('DEBUG: Stream error parsing document ${doc.id}: $e');
-            return null;
-          }
-        })
-        .whereType<OutageReport>()
-        .where((report) {
-          // Rule: Show if it's an Official Scheduled advisory OR it's a recent community report
-          if (report.status == OutageStatus.scheduled) return true;
-          return report.reportedAt.isAfter(limitDate);
-        }).toList();
-        
-        return reports;
-      });
-  }
-
-  /// Listen to ALL historical outages (No time limit)
-  Stream<List<OutageReport>> getOutageHistoryStream() {
-    return _db.collection('outages')
-      .orderBy('reportedAt', descending: true)
       .snapshots()
       .map((snapshot) {
         return snapshot.docs.map((doc) {
@@ -148,24 +118,36 @@ class FirebaseService {
             data['id'] = doc.id;
             return OutageReport.fromJson(data);
           } catch (e) {
-            print('History Stream error parsing document ${doc.id}: $e');
+            debugPrint('⚠️ Error parsing report: $e');
             return null;
           }
         })
         .whereType<OutageReport>()
-        .toList();
+        .where((report) {
+          // Rule: Show if it's an Official Scheduled advisory OR it's a community report from TODAY
+          if (report.status == OutageStatus.scheduled) return true;
+          return report.reportedAt.isAfter(startOfToday);
+        }).toList();
       });
   }
 
-  /// Submit a new brownout report (Direct Write Version for Reliability)
+  /// Submit a new brownout report
   Future<void> submitReport(OutageReport report) async {
     final uid = currentUser?.uid;
-    if (uid == null) {
-      throw Exception('Hindi ka naka-login. Please sign in muna.');
-    }
+    if (uid == null) throw Exception('Please login first.');
 
-    // Check if the user already has an active report at this general location
-    // (This prevents accidental double-reporting while we have clustering disabled)
+    // Prevention: Check if user already reported TODAY
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    
+    final existing = await _db.collection('outages')
+      .where('reporters', arrayContains: uid)
+      .where('reportedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday))
+      .get();
+
+    if (existing.docs.isNotEmpty) {
+      throw Exception('May report ka na para sa araw na ito! ⚡ Isang report lang per day per user para maiwasan ang spam.');
+    }
     
     try {
       final docRef = _db.collection('outages').doc();
@@ -173,7 +155,7 @@ class FirebaseService {
       
       OutageStatus initialStatus = OutageStatus.unverified;
       if (userWeight >= 3) {
-        initialStatus = OutageStatus.nopower;
+        initialStatus = OutageStatus.nopower; // Trusted users auto-verify
       }
       
       final data = {
@@ -188,7 +170,7 @@ class FirebaseService {
         'notes': report.notes,
         'upvotes': userWeight,
         'restoredVotes': 0,
-        'isVerified': false,
+        'isVerified': userWeight >= 3,
         'reporters': [uid],
         'restorers': [],
       };
@@ -199,15 +181,33 @@ class FirebaseService {
     }
   }
 
-  /// Add user to an existing report's reporters list (Me Too logic)
+  /// Add user to an existing report (Me Too logic) with verification check
   Future<void> upvoteReport(String reportId) async {
     final uid = currentUser?.uid;
     if (uid == null) return;
     
     final docRef = _db.collection('outages').doc(reportId);
-    await docRef.update({
-      'reporters': FieldValue.arrayUnion([uid]),
-      'upvotes': FieldValue.increment(1),
+    
+    await _db.runTransaction((transaction) async {
+      final snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) return;
+      
+      final reporters = List<String>.from(snapshot.data()?['reporters'] ?? []);
+      if (reporters.contains(uid)) return; // Already reported
+      
+      final currentUpvotes = snapshot.data()?['upvotes'] ?? 0;
+      final userWeight = currentUserTrust.voteWeight;
+      final newUpvotes = currentUpvotes + userWeight;
+      
+      // Auto-verify threshold = 3
+      final bool shouldVerify = newUpvotes >= 3;
+      
+      transaction.update(docRef, {
+        'reporters': FieldValue.arrayUnion([uid]),
+        'upvotes': newUpvotes,
+        'status': shouldVerify ? OutageStatus.nopower.name : snapshot.data()?['status'],
+        'isVerified': shouldVerify,
+      });
     });
   }
 
