@@ -16,7 +16,12 @@ class GeminiService {
     const envVarKey = String.fromEnvironment('GEMINI_API_KEY');
     
     // 2. Try DotEnv fallback (Convenient for Local Dev)
-    final dotEnvKey = dotenv.maybeGet('GEMINI_API_KEY');
+    String? dotEnvKey;
+    try {
+      if (dotenv.isInitialized) {
+        dotEnvKey = dotenv.maybeGet('GEMINI_API_KEY');
+      }
+    } catch (_) {}
 
     final finalKey = (envVarKey.isNotEmpty) ? envVarKey : dotEnvKey;
 
