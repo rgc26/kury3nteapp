@@ -34,31 +34,6 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   List<LatLng> _routePoints = [];
   final List<String> _brands = ['ALL', 'PTR', 'SHL', 'CAL', 'SEA', 'PHX', 'UNI', 'CLN'];
 
-  // EMERGENCY PINS - PRE-LOADED IN DATA LAYER
-  static List<FuelStation> _getStaticMocks() {
-    final List<FuelStation> mocks = [];
-    final brands = ['PTR', 'SHL', 'CAL', 'SEA', 'PHX', 'UNI', 'CLN'];
-    final names = ['Gas Station', 'Fuel Hub', 'Express Fill', 'Neighborhood Gas', 'Highway Fuel'];
-    final baseGps = const LatLng(14.5995, 120.9842);
-    
-    for (int i = 0; i < 15; i++) {
-      final latOffset = (i * 0.003) - 0.015;
-      final lonOffset = ((i % 5) * 0.004) - 0.01;
-      final brand = brands[i % brands.length];
-      mocks.add(FuelStation(
-        id: 'static_$i',
-        brand: brand,
-        name: '${names[i % names.length]} $brand',
-        address: 'Nearby Area',
-        location: LatLng(baseGps.latitude + latOffset, baseGps.longitude + lonOffset),
-        lastUpdated: DateTime.now(),
-        status: StationStatus.openHasStock,
-        prices: {'Premium 95': 85.51, 'Unleaded 91': 84.51, 'Diesel': 85.86},
-      ));
-    }
-    return mocks;
-  }
-
   Map<String, double> _doePrices = {
     'Premium 97': 94.91,
     'Premium 95': 85.51,
@@ -72,42 +47,64 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeDoeDate();
+    _doeLastUpdated = DateFormat('MMMM d, yyyy').format(DateTime.now());
     
-    _loadStations();
-    _requestRealLocation().then((_) => _loadStations());
-    _fetchDoePrices();
-  }
-
-  void _initializeDoeDate() {
-    // Show today's date to indicate the app is actively monitoring the latest DOE data
-    setState(() {
-      _doeLastUpdated = DateFormat('MMMM d, yyyy').format(DateTime.now());
+    // Same pattern as Brownout Map: get GPS → then load real data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initFuelTracker();
     });
   }
 
+  /// Master init: GPS first → then real stations. Same as brownout map.
+  Future<void> _initFuelTracker() async {
+    setState(() => _loading = true);
+    
+    // Step 1: Get real GPS (same as brownout)
+    await _requestRealLocation();
+    
+    // Step 2: Fetch real gas stations from OpenStreetMap
+    await _loadStations();
+    
+    // Step 3: Fetch DOE price bulletin
+    _fetchDoePrices();
+  }
+
+  /// GPS — exact same pattern as brownout_map_screen
   Future<void> _requestRealLocation() async {
     try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enable location services in your browser/device.')));
+        return;
+      }
+
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
-        final pos = await Geolocator.getCurrentPosition();
-        if (mounted) {
-          setState(() => _userGps = LatLng(pos.latitude, pos.longitude));
-          if (_isFollowingUser) _mapController.move(_userGps, 17);
+        if (permission == LocationPermission.denied) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permissions are denied.')));
+          return;
         }
+      }
 
-        // Real-time tracking
-        Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 5),
-        ).listen((pos) {
-          if (mounted) {
-            setState(() => _userGps = LatLng(pos.latitude, pos.longitude));
-            if (_isFollowingUser) _mapController.move(_userGps, 17);
-          }
-        });
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permissions are permanently denied.')));
+        return;
+      }
+
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fetching your real GPS location... 📍')));
+
+      final position = await Geolocator.getCurrentPosition();
+      
+      if (mounted) {
+        setState(() => _userGps = LatLng(position.latitude, position.longitude));
+        _mapController.move(_userGps, 15);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Location updated!')));
       }
     } catch (e) {
       debugPrint('Location Error: $e');
@@ -116,13 +113,12 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
 
   Future<void> _fetchDoePrices() async {
     try {
-      final response = await http.get(Uri.parse('https://api.allorigins.win/get?url=${Uri.encodeComponent('https://www.doe.gov.ph/retail-pump-prices-metro-manila')}'));
+      final response = await http.get(Uri.parse(
+        'https://api.allorigins.win/get?url=${Uri.encodeComponent('https://www.doe.gov.ph/retail-pump-prices-metro-manila')}'));
       if (response.statusCode == 200) {
         final content = json.decode(response.body)['contents'];
         if (content.contains('Gasoline') || content.contains('Retail')) {
-          setState(() {
-            _doeLastUpdated = DateFormat('MMMM d, yyyy').format(DateTime.now());
-          });
+          if (mounted) setState(() => _doeLastUpdated = DateFormat('MMMM d, yyyy').format(DateTime.now()));
         }
       }
     } catch (e) {
@@ -130,116 +126,120 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
     }
   }
 
+  /// Fetch REAL gas stations from OpenStreetMap within 5km of user
   Future<void> _loadStations() async {
     if (!mounted) return;
     setState(() => _loading = true);
+    
     try {
       final lat = _userGps.latitude;
       final lon = _userGps.longitude;
-      final radius = 5000;
-      final query = '[out:json];(node["amenity"="fuel"](around:$radius,$lat,$lon);way["amenity"="fuel"](around:$radius,$lat,$lon);relation["amenity"="fuel"](around:$radius,$lat,$lon););out center;';
-      final proxyUrl = 'https://api.allorigins.win/get?url=${Uri.encodeComponent('https://overpass-api.de/api/interpreter?data=${Uri.encodeComponent(query)}')}';
+      final radius = 5000; // 5km
       
-      final response = await http.get(Uri.parse(proxyUrl)).timeout(const Duration(seconds: 15));
+      final query = '[out:json];('
+          'node["amenity"="fuel"](around:$radius,$lat,$lon);'
+          'way["amenity"="fuel"](around:$radius,$lat,$lon);'
+          'relation["amenity"="fuel"](around:$radius,$lat,$lon);'
+          ');out center;';
+      
+      final proxyUrl = 'https://api.allorigins.win/get?url='
+          '${Uri.encodeComponent('https://overpass-api.de/api/interpreter?data=${Uri.encodeComponent(query)}')}';
+      
+      debugPrint('🔍 Fetching real stations near ($lat, $lon)...');
+      
+      final response = await http.get(Uri.parse(proxyUrl))
+          .timeout(const Duration(seconds: 20));
       
       if (response.statusCode == 200) {
         final content = json.decode(response.body)['contents'];
         final data = json.decode(content);
         final List elements = data['elements'] ?? [];
         
+        debugPrint('📍 OSM returned ${elements.length} fuel stations');
+        
         if (elements.isEmpty) {
-          _generateMockStations();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No gas stations found nearby. Try zooming out or refreshing.'), backgroundColor: Colors.orange));
+          }
           return;
         }
         
-        final List<FuelStation> rawStations = elements.map((e) {
+        final List<FuelStation> realStations = [];
+        
+        for (var e in elements) {
           final tags = e['tags'] ?? {};
           final name = tags['name'] ?? 'Gas Station';
           final brand = tags['brand'] ?? _detectBrand(name);
-          final double latVal = e['lat'] ?? (e['center']?['lat'] ?? 0.0);
-          final double lonVal = e['lon'] ?? (e['center']?['lon'] ?? 0.0);
-          final random = (e['id'] % 30) / 10.0 - 1.5;
-          final Map<String, double> realisticPrices = {};
-          _doePrices.forEach((key, val) => realisticPrices[key] = val + random);
+          final double latVal = (e['lat'] ?? e['center']?['lat'] ?? 0.0).toDouble();
+          final double lonVal = (e['lon'] ?? e['center']?['lon'] ?? 0.0).toDouble();
           
-          return FuelStation(
+          // Skip invalid coordinates
+          if (latVal == 0.0 && lonVal == 0.0) continue;
+          
+          // Generate realistic price variation per station
+          final random = (e['id'] % 30) / 10.0 - 1.5;
+          final Map<String, double> prices = {};
+          _doePrices.forEach((key, val) => prices[key] = val + random);
+          
+          realStations.add(FuelStation(
             id: 'osm_${e['id']}',
             brand: brand,
             name: name,
-            address: tags['addr:street'] ?? 'Nearby Area',
+            address: tags['addr:street'] ?? tags['addr:city'] ?? 'Nearby Area',
             location: LatLng(latVal, lonVal),
             lastUpdated: DateTime.now(),
             status: StationStatus.unknown,
-            prices: realisticPrices,
-          );
-        }).toList();
+            prices: prices,
+          ));
+        }
 
         // APPLY JITTER TO OVERLAPPING PINS
         final List<FuelStation> jitteredStations = [];
         final Map<String, int> coordCount = {};
         
-        for (var s in rawStations) {
+        for (var s in realStations) {
           final key = '${s.location.latitude.toStringAsFixed(4)}_${s.location.longitude.toStringAsFixed(4)}';
           final count = coordCount[key] ?? 0;
           coordCount[key] = count + 1;
           
           if (count > 0) {
-            // Nudge slightly (approx 15-20 meters)
             final double nudgeLat = (count % 2 == 0 ? 1 : -1) * (count * 0.00015);
             final double nudgeLon = (count % 3 == 0 ? 1 : -1) * (count * 0.00015);
             jitteredStations.add(FuelStation(
               id: s.id, brand: s.brand, name: s.name, address: s.address,
               location: LatLng(s.location.latitude + nudgeLat, s.location.longitude + nudgeLon),
-              lastUpdated: s.lastUpdated, status: s.status, prices: s.prices
+              lastUpdated: s.lastUpdated, status: s.status, prices: s.prices,
             ));
           } else {
             jitteredStations.add(s);
           }
         }
 
-        setState(() {
-          _stations = jitteredStations;
-          _loading = false;
-        });
-        if (jitteredStations.isNotEmpty) _mapController.move(_userGps, 15);
+        if (jitteredStations.isNotEmpty && mounted) {
+          debugPrint('✅ Loaded ${jitteredStations.length} real gas stations');
+          setState(() => _stations = jitteredStations);
+          _mapController.move(_userGps, 15);
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('📍 Found ${jitteredStations.length} gas stations near you!'), backgroundColor: Colors.green));
+        }
       } else {
-        _generateMockStations();
+        debugPrint('⚠️ Proxy returned status ${response.statusCode}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('⚠️ Could not fetch stations. Tap refresh to try again.'), backgroundColor: Colors.orange));
+        }
       }
     } catch (e) {
-      debugPrint('Load Stations Error: $e');
-      _generateMockStations();
+      debugPrint('⚠️ Load Stations Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('⚠️ Network error. Tap refresh to try again.'), backgroundColor: Colors.orange));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  void _generateMockStations() {
-    if (!mounted) return;
-    final List<FuelStation> mocks = [];
-    final brands = ['PTR', 'SHL', 'CAL', 'SEA', 'PHX', 'UNI', 'CLN'];
-    final names = ['Gas Station', 'Fuel Hub', 'Express Fill', 'Neighborhood Gas', 'Highway Fuel'];
-    
-    for (int i = 0; i < 8; i++) {
-      final latOffset = (i * 0.005) - 0.01;
-      final lonOffset = ((i % 3) * 0.004) - 0.006;
-      final brand = brands[i % brands.length];
-      
-      mocks.add(FuelStation(
-        id: 'mock_$i',
-        brand: brand,
-        name: '${names[i % names.length]} $brand',
-        address: 'Nearby Caloocan Area',
-        location: LatLng(_userGps.latitude + latOffset, _userGps.longitude + lonOffset),
-        lastUpdated: DateTime.now(),
-        status: StationStatus.openHasStock,
-        prices: Map.from(_doePrices),
-      ));
-    }
-    
-    setState(() {
-      _stations = mocks;
-      _loading = false;
-    });
   }
 
   String _detectBrand(String name) {
@@ -271,9 +271,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
         builder: (context, snapshot) {
           final communityReports = snapshot.data ?? [];
           
-          final baseList = _stations.isEmpty ? _getStaticMocks() : _stations;
-
-          final allMerged = baseList.map((base) {
+          final allMerged = _stations.map((base) {
             try {
               final report = communityReports.firstWhere((r) => r.id == base.id);
               return FuelStation(
