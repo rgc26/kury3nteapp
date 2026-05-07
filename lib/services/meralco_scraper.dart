@@ -64,8 +64,15 @@ class MeralcoScraper {
       print('Error fetching maintenance schedules: $e');
     }
     
-    print('Using fallback maintenance schedules');
     return [
+      MeralcoSchedule(
+        date: 'May 12 - 13, 2026',
+        location: 'Caloocan City (Bagong Barrio)',
+        timeRange: '11:00PM - 5:00AM',
+        affectedAreas: 'Portions of Milagrosa St. from Malolos Ave. to Reparo Road including Intan, KKK, Miracle, Kaganapan, Aklan Silahis, Bencer, Jasmin, Kapayapaan, Rosal, Waling-Waling, Katarungan, Abraham, Akasya, Albay, Apitong, Bayanihan, Cavite, Cypress, David, Exodus, Isaac, Jacob, Kamagong, Kaunlaran, Moises, Mulawin, Narra, Nido, Pangasinan, Santan, San Juan, San Pablo, Solomon, Tindalo and San Pedro Sts. Also portion of Reparo Road.',
+        reason: 'Line reconductoring works and replacement of poles along Milagrosa St. in Bagong Barrio.',
+        detailUrl: 'https://company.meralco.com.ph/news-and-advisories/maintenance-schedule/may-12-13-2026-caloocan-city-bagong-barrio',
+      ),
       MeralcoSchedule(
         date: 'May 14, 2026',
         location: 'Cavite (Trece Martires City)',
@@ -73,14 +80,6 @@ class MeralcoScraper {
         affectedAreas: 'PORTION OF CIRCUIT TMC II 45WA including Panungyanan Road in Bgy. San Agustin.',
         reason: 'Relocation of facilities along Panungyanan Road.',
         detailUrl: 'https://company.meralco.com.ph/news-and-advisories/maintenance-schedule/may-14-2026-cavite-trece-martires-city',
-      ),
-      MeralcoSchedule(
-        date: 'May 12, 2026',
-        location: 'Metro Manila (Quezon City)',
-        timeRange: '9:00AM - 2:00PM',
-        affectedAreas: 'Portions of Brgy. Fairview and Commonwealth including Regalado Avenue.',
-        reason: 'Line reconductoring and maintenance works.',
-        detailUrl: 'https://company.meralco.com.ph/news-and-advisories/maintenance-schedule/may-12-2026-quezon-city',
       ),
     ];
   }
