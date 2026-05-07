@@ -194,9 +194,6 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
               itemBuilder: (context, index) => _usageCardItem(selected[index]),
             ),
           ],
-          const SizedBox(height: 32),
-          
-          ],
           const SizedBox(height: 40),
         ],
       ),
