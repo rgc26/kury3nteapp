@@ -251,6 +251,12 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
         stream: _firebaseService.getFuelStationsStream(),
         builder: (context, snapshot) {
           final communityReports = snapshot.data ?? [];
+          
+          // ULTRA-SAFE FALLBACK: If map is empty during build, force mocks
+          if (_stations.isEmpty && !_loading) {
+            WidgetsBinding.instance.addPostFrameCallback((_) => _generateMockStations());
+          }
+
           final allMerged = _stations.map((base) {
             try {
               final report = communityReports.firstWhere((r) => r.id == base.id);
@@ -264,8 +270,8 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
                 prices: report.prices.isNotEmpty ? report.prices : base.prices,
                 lastUpdated: report.lastUpdated,
                 reportedBy: report.reportedBy,
-                reporters: report.reporters, // MERGE REPORTERS
-                reportCount: report.reportCount, // MERGE COUNT
+                reporters: report.reporters,
+                reportCount: report.reportCount,
               );
             } catch (_) { return base; }
           }).toList();
