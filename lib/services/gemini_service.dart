@@ -41,7 +41,6 @@ class GeminiService {
         temperature: 0.1,
         topP: 0.95,
         topK: 40,
-        outputMimeType: 'application/json',
       ),
     );
   }
