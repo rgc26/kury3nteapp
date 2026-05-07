@@ -145,52 +145,44 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
             ]),
             
             // Top stats (Aligned Left, next to Menu)
-            Positioned(top: MediaQuery.of(context).padding.top + 8, left: 60, right: 16, child: Align(
-              alignment: Alignment.centerLeft,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withAlpha(180),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withAlpha(50)),
-                      boxShadow: [BoxShadow(color: Colors.black.withAlpha(100), blurRadius: 10)]
-                    ),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        _statItem('🔴', noP, 'Confirmed', AppColors.danger),
-                        _divider(),
-                        _statItem('🟡', unv, 'Unverified', AppColors.warning),
-                        _divider(),
-                        
-                        if (sched > 0)
-                          PopupMenuButton<OutageReport>(
-                            position: PopupMenuPosition.under,
-                            offset: const Offset(0, 10),
-                            onSelected: (o) {
-                              _mapController.move(o.location, 16);
-                              setState(() => _selected = o);
-                            },
-                            itemBuilder: (ctx) => _outages
-                              .where((o) => o.status == OutageStatus.scheduled)
-                              .map((o) => PopupMenuItem(
-                                value: o,
-                                child: Text(o.barangay ?? 'Official', style: const TextStyle(fontSize: 12)),
-                              )).toList(),
-                            child: _statItem('🔵', sched, 'Official', Colors.blue, isDropdown: true),
-                          )
-                        else
-                          _statItem('🔵', sched, 'Official', Colors.blue),
-                          
-                        _divider(),
-                        _statItem('🟢', rest, 'Restored', AppColors.success),
-                      ]),
-                    ),
-                  ),
-                ],
+            Positioned(top: MediaQuery.of(context).padding.top + 8, left: 52, right: 16, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(180),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withAlpha(30)),
+                boxShadow: [BoxShadow(color: Colors.black.withAlpha(100), blurRadius: 10)]
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  _statItem('🔴', noP, 'Confirmed', AppColors.danger),
+                  _divider(),
+                  _statItem('🟡', unv, 'Unverified', AppColors.warning),
+                  _divider(),
+                  
+                  if (sched > 0)
+                    PopupMenuButton<OutageReport>(
+                      position: PopupMenuPosition.under,
+                      offset: const Offset(0, 10),
+                      onSelected: (o) {
+                        _mapController.move(o.location, 16);
+                        setState(() => _selected = o);
+                      },
+                      itemBuilder: (ctx) => _outages
+                        .where((o) => o.status == OutageStatus.scheduled)
+                        .map((o) => PopupMenuItem(
+                          value: o,
+                          child: Text(o.barangay ?? 'Official', style: const TextStyle(fontSize: 12)),
+                        )).toList(),
+                      child: _statItem('🔵', sched, 'Official', Colors.blue, isDropdown: true),
+                    )
+                  else
+                    _statItem('🔵', sched, 'Official', Colors.blue),
+                    
+                  _divider(),
+                  _statItem('🟢', rest, 'Restored', AppColors.success),
+                ]),
               ),
             )),
             
@@ -619,24 +611,29 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
 }
 
   Widget _statItem(String icon, int count, String label, Color color, {bool isDropdown = false}) {
+    String shortLabel = label;
+    if (label == 'Confirmed') shortLabel = 'Confirmed';
+    if (label == 'Unverified') shortLabel = 'Unv.';
+    if (label == 'Restored') shortLabel = 'OK';
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withAlpha(120),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withAlpha(100), width: 1),
+        color: Colors.black.withAlpha(80),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: color.withAlpha(60), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 12)),
-          const SizedBox(width: 6),
-          Text('$count', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-          const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 9, fontWeight: FontWeight.bold)),
+          Text(icon, style: const TextStyle(fontSize: 10)),
+          const SizedBox(width: 4),
+          Text('$count', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(width: 4),
+          Text(shortLabel, style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 8, fontWeight: FontWeight.bold)),
           if (isDropdown) ...[
-            const SizedBox(width: 4),
-            Icon(Icons.arrow_drop_down, color: Colors.white.withAlpha(180), size: 14),
+            const SizedBox(width: 2),
+            Icon(Icons.arrow_drop_down, color: Colors.white.withAlpha(150), size: 12),
           ]
         ],
       ),
