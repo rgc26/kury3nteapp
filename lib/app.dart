@@ -7,7 +7,6 @@ import 'screens/fuel_tracker_screen.dart';
 import 'screens/energy_audit_screen.dart';
 import 'screens/alerts_screen.dart';
 import 'screens/bayanihan_screen.dart';
-import 'screens/dashboard_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/history_screen.dart';
 import 'services/firebase_service.dart';
@@ -293,11 +292,6 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 Navigator.push(context, MaterialPageRoute(builder: (ctx) => ProfileScreen(storage: widget.storage)));
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: const Text('Settings'),
-              onTap: () => Navigator.pop(context),
-            ),
             const Divider(color: AppColors.border),
             const Spacer(),
             ListTile(
@@ -370,24 +364,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
           ],
         ),
       ),
-      floatingActionButton: _currentIndex == 0 ? _buildDashboardFab() : null,
     );
   }
 
-  Widget _buildDashboardFab() {
-    return FloatingActionButton.small(
-      heroTag: 'dashboard_fab',
-      backgroundColor: AppColors.surfaceLight,
-      foregroundColor: AppColors.primary,
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DashboardScreen(storage: widget.storage),
-          ),
-        );
-      },
-      child: const Icon(Icons.dashboard_outlined, size: 20),
-    );
-  }
 }

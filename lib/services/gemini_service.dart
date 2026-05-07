@@ -12,6 +12,9 @@ class GeminiService {
   GenerativeModel? _visionModel;
   String? _apiKey;
 
+  // Fallback key for local dev when .env can't be loaded as web asset
+  static const String _fallbackKey = 'AIzaSyA5W-w6nqZdfsI5aacg9wCrDnb4XI3cBWQ';
+
   GeminiService() {
     // 1. Try Environment Variable first (Safe for Production/Vercel)
     const envVarKey = String.fromEnvironment('GEMINI_API_KEY');
@@ -24,9 +27,10 @@ class GeminiService {
       }
     } catch (_) {}
 
-    final finalKey = (envVarKey.isNotEmpty) ? envVarKey : dotEnvKey;
+    // 3. Use fallback key if neither source provides one
+    final finalKey = (envVarKey.isNotEmpty) ? envVarKey : (dotEnvKey ?? _fallbackKey);
 
-    if (finalKey != null && finalKey.isNotEmpty) {
+    if (finalKey.isNotEmpty) {
       configure(finalKey);
       debugPrint('GeminiService: API key loaded successfully (${finalKey.substring(0, 8)}...)');
     } else {
