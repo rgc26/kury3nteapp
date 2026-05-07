@@ -229,11 +229,11 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 final photoUrl = profile['photoUrl'] as String?;
                 
                 String rank = 'Newbie Bayani';
-                Color rankColor = Colors.grey;
-                if (points >= 50) { rank = 'Bronze Bayani'; rankColor = Colors.orange; }
-                if (points >= 200) { rank = 'Silver Bayani'; rankColor = Colors.blueGrey; }
-                if (points >= 500) { rank = 'Gold Bayani'; rankColor = Colors.amber; }
-                if (points >= 1000) { rank = 'Legendary Bayani'; rankColor = AppColors.primary; }
+                Color rankColor = Colors.black87; // Highly readable on orange
+                if (points >= 50) { rank = 'Bronze Bayani'; rankColor = const Color(0xFF5D4037); }
+                if (points >= 200) { rank = 'Silver Bayani'; rankColor = const Color(0xFF37474F); }
+                if (points >= 500) { rank = 'Gold Bayani'; rankColor = const Color(0xFF3E2723); }
+                if (points >= 1000) { rank = 'Legendary Bayani'; rankColor = Colors.white; }
 
                 return UserAccountsDrawerHeader(
                   decoration: const BoxDecoration(color: AppColors.primary),
@@ -243,12 +243,16 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                     child: photoUrl == null ? Text(user?.displayName?[0] ?? user?.email?[0] ?? '?', 
                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)) : null,
                   ),
-                  accountName: Text(user?.displayName ?? 'Kuryente User', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  accountName: Text(user?.displayName ?? 'Kuryente User', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
                   accountEmail: Row(children: [
-                    const Icon(Icons.stars, color: Colors.amber, size: 14),
+                    const Icon(Icons.stars, color: Colors.black54, size: 14),
                     const SizedBox(width: 4),
-                    Text('$points pts • ', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 12)),
-                    Text(rank, style: TextStyle(color: rankColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                    Text('$points pts • ', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: rankColor.withAlpha(40), borderRadius: BorderRadius.circular(4)),
+                      child: Text(rank, style: TextStyle(color: rankColor, fontSize: 11, fontWeight: FontWeight.w900)),
+                    ),
                   ]),
                 );
               }
