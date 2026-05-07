@@ -132,7 +132,7 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
         const Spacer(),
         TextButton.icon(
           icon: const Icon(Icons.comment_outlined, size: 14), 
-          label: Text('Comments ${p.commentCount > 0 ? "(${p.commentCount})" : ""}', style: const TextStyle(fontSize: 11)), 
+          label: Text('Comments (${p.commentCount})', style: const TextStyle(fontSize: 11)), 
           onPressed: () => _showComments(p),
         ),
       ]),
