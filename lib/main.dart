@@ -38,7 +38,7 @@ class KuryenteApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final firebaseService = FirebaseService();
     return MaterialApp(
-      title: 'Kuryente ⚡',
+      title: 'Kuryentahin ⚡',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       home: StreamBuilder<User?>(
