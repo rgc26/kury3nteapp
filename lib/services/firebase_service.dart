@@ -36,13 +36,14 @@ class FirebaseService {
 
     final docRef = _db.collection('fuel_stations').doc(stationId);
     
-    // In a real app, we would update or create the station if it doesn't exist
-    // But Step 1 auto-populates them. So we update.
+    // Increment reportCount and add user to reporters list to show community validation
     await docRef.set({
       'status': status.name,
       'prices': prices,
       'lastUpdated': FieldValue.serverTimestamp(),
       'reportedBy': uid,
+      'reporters': FieldValue.arrayUnion([uid]),
+      'reportCount': FieldValue.increment(1),
     }, SetOptions(merge: true));
   }
 

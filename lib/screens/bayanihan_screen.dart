@@ -3,6 +3,11 @@ import '../theme/app_colors.dart';
 import '../models/app_models.dart';
 import '../data/energy_tips.dart';
 import '../services/storage_service.dart';
+import '../services/firebase_service.dart';
+import '../models/outage_report.dart';
+import '../models/fuel_station.dart';
+import '../app.dart';
+import 'package:intl/intl.dart';
 
 class BayanihanScreen extends StatefulWidget {
   final StorageService storage;
@@ -13,13 +18,14 @@ class BayanihanScreen extends StatefulWidget {
 
 class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
+  final _firebaseService = FirebaseService();
   List<BayanihanPost> _posts = [];
   bool _nearMeOnly = false;
 
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 4, vsync: this);
+    _tabCtrl = TabController(length: 5, vsync: this);
     _loadPosts();
   }
 
@@ -57,10 +63,11 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
           ]),
         ],
         bottom: TabBar(controller: _tabCtrl, isScrollable: true, tabs: const [
-          Tab(text: '🔌 Generator'), Tab(text: '⛽ Fuel Pool'), Tab(text: '🔋 Charging'), Tab(text: '🏪 Business'),
+          Tab(text: '📡 Live Feed'), Tab(text: '🔌 Generator'), Tab(text: '⛽ Fuel Pool'), Tab(text: '🔋 Charging'), Tab(text: '🏪 Business'),
         ]),
       ),
       body: TabBarView(controller: _tabCtrl, children: [
+        _buildLiveFeedTab(),
         _postList(BayanihanCategory.generator),
         _postList(BayanihanCategory.fuelPool),
         _postList(BayanihanCategory.charging),
@@ -135,6 +142,88 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
     if (d.inMinutes < 60) return '${d.inMinutes}m ago';
     if (d.inHours < 24) return '${d.inHours}h ago';
     return '${d.inDays}d ago';
+  }
+
+  Widget _buildLiveFeedTab() {
+    return StreamBuilder<List<OutageReport>>(
+      stream: _firebaseService.getOutagesStream(),
+      builder: (context, outageSnap) {
+        return StreamBuilder<List<FuelStation>>(
+          stream: _firebaseService.getFuelStationsStream(),
+          builder: (context, fuelSnap) {
+            final outages = outageSnap.data ?? [];
+            final fuels = (fuelSnap.data ?? []).where((s) => s.status != StationStatus.unknown).toList();
+            
+            // Convert to generic "Activity" items for the feed
+            final List<Map<String, dynamic>> activities = [];
+            
+            for (var o in outages) {
+              activities.add({
+                'type': 'brownout',
+                'title': 'Reported: ${o.status.name.toUpperCase()}',
+                'subtitle': o.barangay,
+                'time': o.reportedAt,
+                'data': o,
+              });
+            }
+            
+            for (var f in fuels) {
+              activities.add({
+                'type': 'fuel',
+                'title': '${f.brand} is ${f.status.name.toUpperCase()}',
+                'subtitle': '${f.name} • ${f.reportCount} reports',
+                'time': f.lastUpdated,
+                'data': f,
+              });
+            }
+
+            for (var p in _posts) {
+              activities.add({
+                'type': 'post',
+                'title': p.title,
+                'subtitle': '${p.categoryLabel} • ${p.location ?? "Nearby"}',
+                'time': p.createdAt,
+                'data': p,
+              });
+            }
+
+            // Sort by newest first
+            activities.sort((a, b) => b['time'].compareTo(a['time']));
+
+            if (activities.isEmpty) return const Center(child: Text('Wala pang live updates...', style: TextStyle(color: AppColors.textMuted)));
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: activities.length,
+              itemBuilder: (context, index) => _liveActivityCard(activities[index]),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _liveActivityCard(Map<String, dynamic> act) {
+    final IconData icon = act['type'] == 'brownout' ? Icons.power_off : act['type'] == 'fuel' ? Icons.local_gas_station : Icons.handshake;
+    final Color color = act['type'] == 'brownout' ? AppColors.danger : act['type'] == 'fuel' ? AppColors.primary : AppColors.success;
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: CircleAvatar(backgroundColor: color.withAlpha(20), child: Icon(icon, color: color, size: 20)),
+        title: Text(act['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        subtitle: Text('${act['subtitle']} • ${_timeAgo(act['time'])}', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        trailing: const Icon(Icons.chevron_right, size: 16),
+        onTap: () {
+          // If brownout or fuel, we can navigate to map
+          if (act['type'] == 'brownout') {
+             AppShell.shellKey.currentState?.jumpToReport(act['data']);
+          } else if (act['type'] == 'fuel') {
+             // In a real app we'd jump to fuel map, but for now we focus on the feed list
+          }
+        },
+      ),
+    );
   }
 
   void _createPost() {

@@ -21,6 +21,8 @@ class FuelStation {
   final Map<String, double> prices; // e.g. {'Regular': 64.50}
   final DateTime lastUpdated;
   final String? reportedBy;
+  final List<String> reporters;
+  final int reportCount;
   double? distanceKm;
 
   FuelStation({
@@ -33,6 +35,8 @@ class FuelStation {
     this.prices = const {},
     required this.lastUpdated,
     this.reportedBy,
+    this.reporters = const [],
+    this.reportCount = 0,
     this.distanceKm,
   });
 
@@ -66,6 +70,8 @@ class FuelStation {
     'prices': prices,
     'lastUpdated': Timestamp.fromDate(lastUpdated),
     'reportedBy': reportedBy,
+    'reporters': reporters,
+    'reportCount': reportCount,
   };
 
   factory FuelStation.fromJson(Map<String, dynamic> json, [String? docId]) {
@@ -80,6 +86,8 @@ class FuelStation {
       prices: Map<String, double>.from(json['prices'] ?? {}),
       lastUpdated: (json['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
       reportedBy: json['reportedBy'],
+      reporters: List<String>.from(json['reporters'] ?? []),
+      reportCount: json['reportCount'] ?? 0,
     );
   }
 }

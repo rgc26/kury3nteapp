@@ -237,19 +237,6 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
                 ]),
               ),
               const Spacer(),
-              // PRICE TOGGLE
-              GestureDetector(
-                onTap: () => setState(() => _isPriceMode = !_isPriceMode),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(color: _isPriceMode ? AppColors.primary : AppColors.surfaceLighter, borderRadius: BorderRadius.circular(12)),
-                  child: Row(children: [
-                    Icon(Icons.payments, color: _isPriceMode ? Colors.black : Colors.white, size: 14),
-                    const SizedBox(width: 6),
-                    Text('PRESYO', style: TextStyle(color: _isPriceMode ? Colors.black : Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ]),
-                ),
-              ),
             ])),
 
             // BRAND FILTER BAR
@@ -458,6 +445,8 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
     }
 
     final shortBrand = _getShortBrand(s.brand);
+    final count = s.reportCount;
+
     return Stack(clipBehavior: Clip.none, children: [
       Container(
         decoration: BoxDecoration(
@@ -469,7 +458,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
         alignment: Alignment.center,
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text('$shortBrand ${price.toInt()}', style: TextStyle(color: s.status == StationStatus.unknown ? Colors.white70 : Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-          Text(statusLabel, style: TextStyle(color: s.status == StationStatus.unknown ? Colors.white38 : Colors.white70, fontSize: 7, fontWeight: FontWeight.bold)),
+          Text(count > 1 ? '$statusLabel ($count)' : statusLabel, style: TextStyle(color: s.status == StationStatus.unknown ? Colors.white38 : Colors.white70, fontSize: 7, fontWeight: FontWeight.bold)),
         ]),
       ),
       if (isRecent && s.status != StationStatus.unknown) Positioned(top: -5, right: -5, child: Container(padding: const EdgeInsets.all(2), decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle), child: const Icon(Icons.bolt, color: Colors.white, size: 10))),
@@ -602,26 +591,10 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           
           const Text('1. STATUS & QUEUE', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
           const SizedBox(height: 8),
-          _statusOption(StationStatus.openHasStock, '✅ Bukas at may gasolina', tempStatus, (v) => setModalState(() => tempStatus = v!)),
-          _statusOption(StationStatus.longQueue, '⚠️ Matagal na pila', tempStatus, (v) => setModalState(() => tempStatus = v!)),
-          _statusOption(StationStatus.outOfStock, '🪫 Wala nang gasolina', tempStatus, (v) => setModalState(() => tempStatus = v!)),
+          _statusOption(StationStatus.openHasStock, '✅ Bukas (Mabilis / Walang pila)', tempStatus, (v) => setModalState(() => tempStatus = v!)),
+          _statusOption(StationStatus.longQueue, '⚠️ May Pila (Matagal / 30 mins+)', tempStatus, (v) => setModalState(() => tempStatus = v!)),
+          _statusOption(StationStatus.outOfStock, '🪫 Wala nang gasolina (Ubos)', tempStatus, (v) => setModalState(() => tempStatus = v!)),
           _statusOption(StationStatus.closed, '❌ Sarado', tempStatus, (v) => setModalState(() => tempStatus = v!)),
-
-          if (tempStatus == StationStatus.longQueue || tempStatus == StationStatus.openHasStock) ...[
-            const SizedBox(height: 10),
-            Text(tempStatus == StationStatus.longQueue ? 'Gaano kahaba ang pila?' : 'Estimated Queue Time:', style: const TextStyle(color: Colors.grey, fontSize: 11)),
-            DropdownButton<String>(
-              value: (tempStatus == StationStatus.longQueue && queueTime == 'Walang pila') ? '10-20 min' : queueTime,
-              dropdownColor: AppColors.surfaceLighter,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              isExpanded: true,
-              items: (tempStatus == StationStatus.longQueue 
-                ? ['10-20 min', '30-45 min', '1 oras+'] 
-                : ['Walang pila', '10-20 min', '30-45 min', '1 oras+']
-              ).map((q) => DropdownMenuItem(value: q, child: Text(q))).toList(),
-              onChanged: (v) => setModalState(() => queueTime = v!),
-            ),
-          ],
           
           const SizedBox(height: 20),
           const Text('2. PUMP PRICES (Optional)', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
