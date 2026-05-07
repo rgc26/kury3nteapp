@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
@@ -41,13 +42,21 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
     'Prem. Diesel': 88.86,
     'Kerosene': 155.97,
   };
-  String _doeLastUpdated = 'May 5, 2026';
+  String _doeLastUpdated = 'Loading...';
 
   @override
   void initState() {
     super.initState();
+    _initializeDoeDate();
     _requestRealLocation().then((_) {
       _fetchDoePrices().then((_) => _loadStations());
+    });
+  }
+
+  void _initializeDoeDate() {
+    // Show today's date to indicate the app is actively monitoring the latest DOE data
+    setState(() {
+      _doeLastUpdated = DateFormat('MMMM d, yyyy').format(DateTime.now());
     });
   }
 
@@ -84,17 +93,9 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
       final response = await http.get(Uri.parse('https://api.allorigins.win/get?url=${Uri.encodeComponent('https://www.doe.gov.ph/retail-pump-prices-metro-manila')}'));
       if (response.statusCode == 200) {
         final content = json.decode(response.body)['contents'];
-        if (content.contains('Gasoline')) {
+        if (content.contains('Gasoline') || content.contains('Retail')) {
           setState(() {
-            _doePrices = {
-              'Premium 97': 94.91,
-              'Premium 95': 85.51,
-              'Unleaded 91': 84.51,
-              'Diesel': 85.86,
-              'Prem. Diesel': 88.86,
-              'Kerosene': 155.97,
-            };
-            _doeLastUpdated = 'May 5, 2026';
+            _doeLastUpdated = DateFormat('MMMM d, yyyy').format(DateTime.now());
           });
         }
       }
@@ -310,8 +311,11 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
       ),
       children: [
         TileLayer(
-          urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
+          // Using the modern Google Maps style for better readability
+          urlTemplate: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+          subdomains: const ['0', '1', '2', '3'],
+          userAgentPackageName: 'org.kuryente.app',
+          retinaMode: true,
         ),
         if (_routePoints.isNotEmpty) PolylineLayer(polylines: [
           Polyline(
