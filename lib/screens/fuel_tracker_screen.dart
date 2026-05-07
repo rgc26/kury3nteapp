@@ -52,7 +52,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
         address: 'Nearby Area',
         location: LatLng(baseGps.latitude + latOffset, baseGps.longitude + lonOffset),
         lastUpdated: DateTime.now(),
-        status: StationStatus.active,
+        status: StationStatus.openHasStock,
         prices: {'Premium 95': 85.51, 'Unleaded 91': 84.51, 'Diesel': 85.86},
       ));
     }
@@ -233,7 +233,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
         address: 'Nearby Caloocan Area',
         location: LatLng(_userGps.latitude + latOffset, _userGps.longitude + lonOffset),
         lastUpdated: DateTime.now(),
-        status: StationStatus.active,
+        status: StationStatus.openHasStock,
         prices: Map.from(_doePrices),
       ));
     }
@@ -283,7 +283,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
         builder: (context, snapshot) {
           final communityReports = snapshot.data ?? [];
           
-          final baseList = _stations.isEmpty ? _getInitialMocks() : _stations;
+          final baseList = _stations.isEmpty ? _getStaticMocks() : _stations;
 
           final allMerged = baseList.map((base) {
             try {
