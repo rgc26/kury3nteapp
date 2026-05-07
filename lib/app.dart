@@ -246,17 +246,26 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   otherAccountsPictures: [
                     Image.asset('assets/kuryentahin.png', height: 40),
                   ],
-                  accountName: Text(user?.displayName ?? 'Kuryentahin User', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-                  accountEmail: Row(children: [
-                    const Icon(Icons.stars, color: Colors.black54, size: 14),
-                    const SizedBox(width: 4),
-                    Text('$points pts • ', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: rankColor.withAlpha(40), borderRadius: BorderRadius.circular(4)),
-                      child: Text(rank, style: TextStyle(color: rankColor, fontSize: 11, fontWeight: FontWeight.w900)),
-                    ),
-                  ]),
+                  accountName: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(user?.displayName ?? 'Kuryentahin User', 
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 18)),
+                  ),
+                  accountEmail: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(children: [
+                        const Icon(Icons.stars, color: Colors.black54, size: 14),
+                        const SizedBox(width: 4),
+                        Text('$points pts • ', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
+                        Text(rank, style: TextStyle(color: rankColor, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5)),
+                      ]),
+                      const SizedBox(height: 2),
+                      Text(user?.email ?? '', style: const TextStyle(color: Colors.black54, fontSize: 11)),
+                    ],
+                  ),
                 );
               }
             ),

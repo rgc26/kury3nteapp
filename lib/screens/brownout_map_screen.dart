@@ -144,18 +144,23 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
               ]),
             ]),
             
-            // Top stats (Aligned Left, next to Menu)
-            Positioned(top: MediaQuery.of(context).padding.top + 8, left: 52, right: 16, child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(180),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withAlpha(30)),
-                boxShadow: [BoxShadow(color: Colors.black.withAlpha(100), blurRadius: 10)]
-              ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
+            // Top stats (Aligned Left, next to Menu - Responsive)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8, 
+              left: 52, 
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withAlpha(200),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withAlpha(40)),
+                  boxShadow: [BoxShadow(color: Colors.black.withAlpha(120), blurRadius: 12)]
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min, 
+                    children: [
                   _statItem('🔴', noP, 'Confirmed', AppColors.danger),
                   _divider(),
                   _statItem('🟡', unv, 'Unverified', AppColors.warning),

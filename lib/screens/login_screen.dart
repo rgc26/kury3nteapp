@@ -139,61 +139,71 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo Image
-              Container(
-                width: 140,
-                height: 140,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withAlpha(50),
-                      blurRadius: 30,
-                      spreadRadius: 5,
-                    )
-                  ],
-                ),
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/kuryentahin.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.flash_on,
-                      size: 80,
-                      color: AppColors.primary,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final double screenHeight = constraints.maxHeight;
+          final double logoSize = screenHeight < 600 ? 100 : 140;
+
+          return SingleChildScrollView(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 48.0),
+              constraints: BoxConstraints(minHeight: screenHeight),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Responsive Logo Image
+                  Container(
+                    width: logoSize,
+                    height: logoSize,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withAlpha(50),
+                          blurRadius: 30,
+                          spreadRadius: 5,
+                        )
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/kuryentahin.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.flash_on,
+                          size: logoSize * 0.6,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              
-              // App Title
-              Text(
-                'Kuryentahin ⚡',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // Subtitle
-              Text(
-                'Crowdsourced brownout map and energy tracker. Report outages, earn Bayani points, and stay informed.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 48),
+                  SizedBox(height: screenHeight < 600 ? 24 : 32),
+                  
+                  // App Title & Tagline
+                  const Text(
+                    'Kuryentahin',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Waze for the Philippine Energy Crisis',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.7),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  
+                  SizedBox(height: screenHeight < 600 ? 40 : 64),
 
               // Sign in button
               if (_isLoading)
