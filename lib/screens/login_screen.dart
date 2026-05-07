@@ -62,54 +62,75 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showDownloadWarning() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 20, spreadRadius: 5)],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.add_to_home_screen, color: AppColors.primary),
-            SizedBox(width: 12),
-            Text('Experience Kuryente ⚡', style: TextStyle(fontSize: 18)),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 24),
+            const Icon(Icons.install_mobile, color: AppColors.primary, size: 48),
+            const SizedBox(height: 16),
+            const Text('Experience Kuryente ⚡', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+            const SizedBox(height: 12),
+            const Text(
+              'Install the app for faster access to the live map and real-time community alerts.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  if (js.context.hasProperty('installPWA')) {
+                    js.context.callMethod('installPWA');
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Use "Add to Home Screen" in your browser menu! 📲')),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: const Text('Add to Home Screen', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Maybe Later', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () async {
+                await widget.storage.setPwaPromptDismissed(true);
+                if (mounted) Navigator.pop(ctx);
+              },
+              child: const Text(
+                'Don\'t show this again',
+                style: TextStyle(color: Colors.white24, fontSize: 11, decoration: TextDecoration.underline),
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
         ),
-        content: const Text(
-          'For faster access to the brownout map and live community alerts, we recommend adding Kuryente to your home screen.',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Maybe Later', style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () async {
-              await widget.storage.setPwaPromptDismissed(true);
-              if (ctx.mounted) Navigator.of(ctx).pop();
-            },
-            child: const Text('Don\'t show again', style: TextStyle(color: Colors.white24, fontSize: 10)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              if (js.context.hasProperty('installPWA')) {
-                js.context.callMethod('installPWA');
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Use "Add to Home Screen" in your browser menu! 📲')),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Add to Home Screen'),
-          ),
-        ],
       ),
     );
   }
