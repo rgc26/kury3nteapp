@@ -32,6 +32,55 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Show download warning on visit
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showDownloadWarning();
+    });
+  }
+
+  void _showDownloadWarning() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Row(
+          children: [
+            Icon(Icons.system_update_alt, color: AppColors.primary),
+            SizedBox(width: 12),
+            Text('Best Experience'),
+          ],
+        ),
+        content: const Text(
+          'For the best experience, including real-time alerts and offline access, please install the Kuryente App on your home screen.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Maybe Later', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              if (js.context.hasProperty('installPWA')) {
+                js.context.callMethod('installPWA');
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please refresh or use a PWA-compatible browser! 🔄')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Download Now', style: TextStyle(color: Colors.black)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -95,29 +144,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               const SizedBox(height: 48),
-              
-              // PWA Install Button
-              TextButton.icon(
-                onPressed: () {
-                  if (js.context.hasProperty('installPWA')) {
-                    js.context.callMethod('installPWA');
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please refresh the browser to enable the download button! 🔄')),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.download, size: 18),
-                label: const Text('Download Kuryente App'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  textStyle: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              Text(
-                'Add to your home screen for the best experience',
-                style: TextStyle(color: AppColors.textSecondary.withAlpha(150), fontSize: 11),
-              ),
             ],
           ),
         ),

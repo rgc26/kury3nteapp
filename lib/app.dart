@@ -64,7 +64,14 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
             title: const Row(children: [Icon(Icons.lock, color: AppColors.danger), SizedBox(width: 8), Text('Security Alert')]),
             content: Text(e.toString().replaceAll('Exception: ', '')),
             actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Understood')),
+              TextButton(
+                onPressed: () async {
+                  final firebaseService = FirebaseService();
+                  await firebaseService.signOut();
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                }, 
+                child: const Text('Understood'),
+              ),
             ],
           ),
         );
