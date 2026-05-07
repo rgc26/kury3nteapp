@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:latlong2/latlong.dart';
@@ -128,6 +129,27 @@ class FirebaseService {
           if (report.status == OutageStatus.scheduled) return true;
           return report.reportedAt.isAfter(startOfToday);
         }).toList();
+      });
+  }
+
+  /// Listen to ALL historical outages (No time limit)
+  Stream<List<OutageReport>> getOutageHistoryStream() {
+    return _db.collection('outages')
+      .orderBy('reportedAt', descending: true)
+      .snapshots()
+      .map((snapshot) {
+        return snapshot.docs.map((doc) {
+          try {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return OutageReport.fromJson(data);
+          } catch (e) {
+            debugPrint('History Stream error parsing document ${doc.id}: $e');
+            return null;
+          }
+        })
+        .whereType<OutageReport>()
+        .toList();
       });
   }
 
