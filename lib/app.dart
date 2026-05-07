@@ -220,15 +220,33 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
         backgroundColor: AppColors.surface,
         child: Column(
           children: [
-            UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(color: AppColors.primary),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text(user?.displayName?[0] ?? user?.email?[0] ?? '?', 
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
-              ),
-              accountName: Text(user?.displayName ?? 'Kuryente User', style: const TextStyle(fontWeight: FontWeight.bold)),
-              accountEmail: Text(user?.email ?? 'No Email'),
+            StreamBuilder<int>(
+              stream: firebaseService.getUserPointsStream(),
+              builder: (context, snapshot) {
+                final points = snapshot.data ?? 0;
+                String rank = 'Newbie Bayani';
+                Color rankColor = Colors.grey;
+                if (points >= 50) { rank = 'Bronze Bayani'; rankColor = Colors.orange; }
+                if (points >= 200) { rank = 'Silver Bayani'; rankColor = Colors.blueGrey; }
+                if (points >= 500) { rank = 'Gold Bayani'; rankColor = Colors.amber; }
+                if (points >= 1000) { rank = 'Legendary Bayani'; rankColor = AppColors.primary; }
+
+                return UserAccountsDrawerHeader(
+                  decoration: const BoxDecoration(color: AppColors.primary),
+                  currentAccountPicture: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: Text(user?.displayName?[0] ?? user?.email?[0] ?? '?', 
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                  ),
+                  accountName: Text(user?.displayName ?? 'Kuryente User', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  accountEmail: Row(children: [
+                    const Icon(Icons.stars, color: Colors.amber, size: 14),
+                    const SizedBox(width: 4),
+                    Text('$points pts • ', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 12)),
+                    Text(rank, style: TextStyle(color: rankColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ]),
+                );
+              }
             ),
             ListTile(
               leading: const Icon(Icons.map_outlined),

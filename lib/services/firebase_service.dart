@@ -51,6 +51,30 @@ class FirebaseService {
       'reporters': FieldValue.arrayUnion([user.uid]),
       'reportCount': FieldValue.increment(1),
     }, SetOptions(merge: true));
+
+    // Award points for fuel update
+    await incrementUserPoints(15);
+  }
+
+  /// Listen to current user points for gamification (Bayanihan Points)
+  Stream<int> getUserPointsStream() {
+    final uid = currentUser?.uid;
+    if (uid == null) return Stream.value(0);
+    
+    return _db.collection('users').doc(uid).snapshots().map((doc) {
+      return doc.data()?['points'] ?? 0;
+    });
+  }
+
+  /// Award points to a user for helpful reports
+  Future<void> incrementUserPoints(int amount) async {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+    
+    await _db.collection('users').doc(uid).set({
+      'points': FieldValue.increment(amount),
+      'lastActive': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   // Hardcoding a mock trust level for demo purposes.
@@ -58,7 +82,7 @@ class FirebaseService {
   UserTrust get currentUserTrust {
     return UserTrust(
       userId: currentUser?.uid ?? 'unknown',
-      confirmedReports: 5, // Make them verified level by default for demo
+      confirmedReports: 5, // verified level by default for demo
     );
   }
 
@@ -221,6 +245,9 @@ class FirebaseService {
       };
       
       await docRef.set(data);
+    
+      // Award points for community report
+      await incrementUserPoints(10);
     } catch (e) {
       throw Exception('Failed to save report: $e');
     }
