@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:typed_data';
 import '../data/energy_tips.dart';
 
 /// Gemini AI service for generating personalized energy-saving tips.
@@ -7,12 +11,19 @@ class GeminiService {
   GenerativeModel? _model;
   String? _apiKey;
 
+  GeminiService() {
+    final envKey = dotenv.env['GEMINI_API_KEY'];
+    if (envKey != null && envKey.isNotEmpty) {
+      configure(envKey);
+    }
+  }
+
   bool get isConfigured => _apiKey != null && _apiKey!.isNotEmpty;
 
   void configure(String apiKey) {
     _apiKey = apiKey;
     _model = GenerativeModel(
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       apiKey: apiKey,
     );
   }
@@ -29,20 +40,18 @@ class GeminiService {
 
     try {
       final prompt = '''
-Ikaw ay isang energy consultant para sa isang Filipino household na naka-experience ng energy crisis.
-
-APPLIANCE PROFILE:
+As an energy expert in the Philippines, provide 4-6 very short and practical energy-saving tips in Taglish (Tagalog-English mix) based on this appliance profile:
 ${applianceProfile.map((a) => '- ${a['name']}: ${a['wattage']}W, ${a['hoursPerDay']} hours/day').join('\n')}
 
-Total Daily Consumption: ${totalDailyKwh.toStringAsFixed(2)} kWh
-Estimated Monthly Bill: ₱${estimatedMonthlyBill.toStringAsFixed(2)}
+Strict constraints:
+- Language: Taglish (Filipino context).
+- Format: Bullet points ONLY.
+- Length: Maximum 2 short sentences per tip.
+- Focus: Highest impact savings for these specific appliances.
+- Tone: Direct and helpful.
 
-Please provide 5 SPECIFIC, ACTIONABLE energy-saving tips in TAGLISH (Filipino-English mix) based on this exact appliance profile. Format each tip as:
-
-🔋 [TIP TITLE]
-[2-3 sentence explanation in Taglish with specific savings estimate]
-
-Focus on the highest-consuming appliances first. Include peso savings estimates where possible. Be practical and consider the Philippine context (brownouts, hot climate, typical Filipino household).
+Total daily consumption: ${totalDailyKwh.toStringAsFixed(2)} kWh.
+Estimated monthly bill: ₱${estimatedMonthlyBill.toStringAsFixed(0)}.
 ''';
 
       final response = await _model!.generateContent([Content.text(prompt)]);
@@ -51,6 +60,60 @@ Focus on the highest-consuming appliances first. Include peso savings estimates 
       return _getFallbackTips(applianceProfile);
     }
   }
+
+  /// Analyze an image of an appliance and suggest name, wattage, and icon.
+  Future<Map<String, dynamic>?> analyzeApplianceImage(List<int> imageBytes) async {
+    if (!isConfigured || _model == null) return null;
+
+    try {
+      final prompt = '''
+Analyze this image of a home appliance. Return a JSON object with:
+"name": A concise name for the appliance (e.g., "Inverter Split-Type AC").
+"wattage": Typical wattage (int).
+"icon_key": One of these keys ONLY: "ac", "tv", "ref", "fan", "wash", "cook", "pc", "other".
+
+Response MUST be ONLY the JSON object.
+''';
+
+      debugPrint('Gemini: Starting image analysis... (Bytes: ${imageBytes.length})');
+      if (imageBytes.isEmpty) {
+        debugPrint('Gemini Error: Image bytes are empty');
+        return null;
+      }
+
+      final response = await _model!.generateContent([
+        Content.multi([
+          TextPart(prompt),
+          DataPart('image/jpeg', Uint8List.fromList(imageBytes)),
+        ])
+      ]);
+
+      final text = response.text;
+      debugPrint('Gemini Raw Response: $text');
+      if (text == null || text.isEmpty) return null;
+
+      // Aggressive JSON extraction: Find first { and last }
+      final int start = text.indexOf('{');
+      final int end = text.lastIndexOf('}');
+      if (start == -1 || end == -1) {
+        debugPrint('Gemini Error: No JSON object found in response');
+        return null;
+      }
+      
+      final String jsonStr = text.substring(start, end + 1);
+      final Map<String, dynamic> data = jsonDecode(jsonStr);
+      
+      return {
+        'name': data['name'] ?? 'Unknown Appliance',
+        'wattage': (data['wattage'] is int) ? data['wattage'] : int.tryParse(data['wattage']?.toString() ?? '0') ?? 0,
+        'icon_key': data['icon_key'] ?? 'other',
+      };
+    } catch (e) {
+      debugPrint('Gemini Analysis Error: $e');
+      return null;
+    }
+  }
+
 
   /// Fallback tips when Gemini is unavailable
   String _getFallbackTips(List<Map<String, dynamic>> applianceProfile) {
