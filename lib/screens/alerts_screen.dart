@@ -31,7 +31,7 @@ class _AlertsScreenState extends State<AlertsScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl = TabController(length: 3, vsync: this);
     _loadData();
   }
 
@@ -79,9 +79,10 @@ class _AlertsScreenState extends State<AlertsScreen> with SingleTickerProviderSt
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData)],
         bottom: TabBar(
           controller: _tabCtrl, 
+          isScrollable: true,
           overlayColor: WidgetStateProperty.all(Colors.transparent),
           tabs: const [
-            Tab(text: '📋 Meralco'), Tab(text: '📍 Watchlist'),
+            Tab(text: '📋 Meralco'), Tab(text: '📍 Watchlist'), Tab(text: '👤 My Notifications'),
           ],
         ),
       ),
@@ -91,6 +92,7 @@ class _AlertsScreenState extends State<AlertsScreen> with SingleTickerProviderSt
             TabBarView(controller: _tabCtrl, children: [
               _buildMeralcoTab(),
               _buildWatchlistTab(),
+              _buildNotificationsTab(),
             ]),
             if (_loading) const Center(child: CircularProgressIndicator(color: AppColors.primary)),
           ],
@@ -98,6 +100,63 @@ class _AlertsScreenState extends State<AlertsScreen> with SingleTickerProviderSt
       ),
     );
   }
+
+  Widget _buildNotificationsTab() {
+    return StreamBuilder<List<AppNotification>>(
+      stream: _firebaseService.getNotificationsStream(),
+      builder: (context, snapshot) {
+        final notifications = snapshot.data ?? [];
+        if (notifications.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.notifications_none, size: 64, color: AppColors.textMuted),
+                SizedBox(height: 16),
+                Text('Walang notifications...', style: TextStyle(color: AppColors.textMuted)),
+              ],
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(12),
+          itemCount: notifications.length,
+          separatorBuilder: (_, __) => const Divider(color: AppColors.border, height: 1),
+          itemBuilder: (context, index) {
+            final n = notifications[index];
+            return ListTile(
+              leading: CircleAvatar(
+                backgroundColor: (n.isRead ? AppColors.textMuted : AppColors.primary).withAlpha(30),
+                child: Icon(
+                  n.type == 'interested' ? Icons.person_add : n.type == 'salamat' ? Icons.favorite : Icons.comment,
+                  color: n.isRead ? AppColors.textMuted : AppColors.primary,
+                  size: 18,
+                ),
+              ),
+              title: Text(n.title, style: TextStyle(fontWeight: n.isRead ? FontWeight.normal : FontWeight.bold, fontSize: 13)),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(n.message, style: const TextStyle(fontSize: 11)),
+                  Text(_timeAgo(n.createdAt), style: const TextStyle(fontSize: 9, color: AppColors.textMuted)),
+                ],
+              ),
+              onTap: () => _firebaseService.markNotificationAsRead(n.id),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _timeAgo(DateTime dt) {
+    final d = DateTime.now().difference(dt);
+    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
+    if (d.inHours < 24) return '${d.inHours}h ago';
+    return '${d.inDays}d ago';
+  }
+
 
   Widget _buildMeralcoTab() {
     return ListView(

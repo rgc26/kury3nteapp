@@ -214,14 +214,112 @@ class FirebaseService {
     data['authorName'] = user.displayName ?? 'Bayani';
     data['authorId'] = user.uid;
     data['createdAt'] = FieldValue.serverTimestamp();
+    data['interestedUserIds'] = [];
+    data['salamatUserIds'] = [];
     await _db.collection('bayanihan').add(data);
     await incrementUserPoints(20);
   }
 
-  Future<void> reactToBayanihanPost(String postId, String type) async {
-    final field = type == 'interested' ? 'interestedCount' : 'salamatCount';
-    await _db.collection('bayanihan').doc(postId).update({field: FieldValue.increment(1)});
+  Future<void> reactToBayanihanPost(BayanihanPost post, String type) async {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+
+    final field = type == 'interested' ? 'interestedUserIds' : 'salamatUserIds';
+    final docRef = _db.collection('bayanihan').doc(post.id);
+
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(docRef);
+      if (!snap.exists) return;
+
+      final existingIds = List<String>.from(snap.data()?[field] ?? []);
+      if (existingIds.contains(uid)) {
+        // Remove reaction if already exists (Toggle behavior)
+        tx.update(docRef, {field: FieldValue.arrayRemove([uid])});
+      } else {
+        // Add reaction
+        tx.update(docRef, {field: FieldValue.arrayUnion([uid])});
+        
+        // Notify author (if not self)
+        if (post.authorId != uid) {
+          await sendNotification(
+            recipientId: post.authorId,
+            type: type,
+            title: type == 'interested' ? 'Interested in your post!' : 'Someone said Salamat!',
+            message: '${currentUser?.displayName ?? "Someone"} reacted to your post: "${post.title}"',
+            relatedId: post.id,
+          );
+        }
+      }
+    });
   }
+
+  Future<void> addCommentToPost(BayanihanPost post, String content) async {
+    final user = currentUser;
+    if (user == null) return;
+
+    final commentRef = _db.collection('bayanihan').doc(post.id).collection('comments').doc();
+    await commentRef.set({
+      'authorId': user.uid,
+      'authorName': user.displayName ?? 'Bayani',
+      'content': content,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // Notify author (if not self)
+    if (post.authorId != user.uid) {
+      await sendNotification(
+        recipientId: post.authorId,
+        type: 'comment',
+        title: 'New Comment!',
+        message: '${user.displayName ?? "Someone"} commented on your post: "${post.title}"',
+        relatedId: post.id,
+      );
+    }
+    await incrementUserPoints(5);
+  }
+
+  Stream<List<BayanihanComment>> getCommentsStream(String postId) {
+    return _db.collection('bayanihan').doc(postId).collection('comments')
+      .orderBy('createdAt', descending: false)
+      .snapshots()
+      .map((snap) => snap.docs.map((doc) => BayanihanComment.fromJson(doc.data(), doc.id)).toList());
+  }
+
+  // --- Notifications ---
+
+  Stream<List<AppNotification>> getNotificationsStream() {
+    final uid = currentUser?.uid;
+    if (uid == null) return Stream.value([]);
+    return _db.collection('users').doc(uid).collection('notifications')
+      .orderBy('createdAt', descending: true)
+      .limit(50)
+      .snapshots()
+      .map((snap) => snap.docs.map((doc) => AppNotification.fromJson(doc.data(), doc.id)).toList());
+  }
+
+  Future<void> sendNotification({
+    required String recipientId,
+    required String type,
+    required String title,
+    required String message,
+    String? relatedId,
+  }) async {
+    await _db.collection('users').doc(recipientId).collection('notifications').add({
+      'type': type,
+      'title': title,
+      'message': message,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isRead': false,
+      'relatedId': relatedId,
+    });
+  }
+
+  Future<void> markNotificationAsRead(String notificationId) async {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+    await _db.collection('users').doc(uid).collection('notifications').doc(notificationId).update({'isRead': true});
+  }
+
 
   // --- Fuel & Geocoding ---
 

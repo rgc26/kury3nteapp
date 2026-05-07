@@ -38,8 +38,10 @@ class BayanihanPost {
   final String? contactInfo;
   final String? availability;
   final DateTime createdAt;
-  int interestedCount;
-  int salamatCount;
+  final String authorId;
+  final String authorName;
+  final List<String> interestedUserIds;
+  final List<String> salamatUserIds;
 
   BayanihanPost({
     required this.id,
@@ -50,9 +52,14 @@ class BayanihanPost {
     this.contactInfo,
     this.availability,
     required this.createdAt,
-    this.interestedCount = 0,
-    this.salamatCount = 0,
+    required this.authorId,
+    this.authorName = 'Bayani',
+    this.interestedUserIds = const [],
+    this.salamatUserIds = const [],
   });
+
+  int get interestedCount => interestedUserIds.length;
+  int get salamatCount => salamatUserIds.length;
 
   String get categoryEmoji {
     switch (category) {
@@ -81,8 +88,10 @@ class BayanihanPost {
     'contactInfo': contactInfo,
     'availability': availability,
     'createdAt': createdAt.toIso8601String(),
-    'interestedCount': interestedCount,
-    'salamatCount': salamatCount,
+    'authorId': authorId,
+    'authorName': authorName,
+    'interestedUserIds': interestedUserIds,
+    'salamatUserIds': salamatUserIds,
   };
 
   factory BayanihanPost.fromJson(Map<String, dynamic> json) {
@@ -104,11 +113,106 @@ class BayanihanPost {
       contactInfo: json['contactInfo'],
       availability: json['availability'],
       createdAt: date,
-      interestedCount: json['interestedCount'] ?? 0,
-      salamatCount: json['salamatCount'] ?? 0,
+      authorId: json['authorId'] ?? 'unknown',
+      authorName: json['authorName'] ?? 'Bayani',
+      interestedUserIds: List<String>.from(json['interestedUserIds'] ?? []),
+      salamatUserIds: List<String>.from(json['salamatUserIds'] ?? []),
     );
   }
 }
+
+class BayanihanComment {
+  final String id;
+  final String authorId;
+  final String authorName;
+  final String content;
+  final DateTime createdAt;
+
+  BayanihanComment({
+    required this.id,
+    required this.authorId,
+    required this.authorName,
+    required this.content,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'authorId': authorId,
+    'authorName': authorName,
+    'content': content,
+    'createdAt': createdAt.toIso8601String(),
+  };
+
+  factory BayanihanComment.fromJson(Map<String, dynamic> json, String id) {
+    DateTime date;
+    if (json['createdAt'] is String) {
+      date = DateTime.parse(json['createdAt']);
+    } else if (json['createdAt'] is Timestamp) {
+      date = (json['createdAt'] as Timestamp).toDate();
+    } else {
+      date = DateTime.now();
+    }
+
+    return BayanihanComment(
+      id: id,
+      authorId: json['authorId'] ?? 'unknown',
+      authorName: json['authorName'] ?? 'Bayani',
+      content: json['content'] ?? '',
+      createdAt: date,
+    );
+  }
+}
+
+class AppNotification {
+  final String id;
+  final String type; // 'interested', 'salamat', 'comment', 'outage'
+  final String title;
+  final String message;
+  final DateTime createdAt;
+  final bool isRead;
+  final String? relatedId; // postId, reportId, etc.
+
+  AppNotification({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.message,
+    required this.createdAt,
+    this.isRead = false,
+    this.relatedId,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'type': type,
+    'title': title,
+    'message': message,
+    'createdAt': createdAt.toIso8601String(),
+    'isRead': isRead,
+    'relatedId': relatedId,
+  };
+
+  factory AppNotification.fromJson(Map<String, dynamic> json, String id) {
+    DateTime date;
+    if (json['createdAt'] is String) {
+      date = DateTime.parse(json['createdAt']);
+    } else if (json['createdAt'] is Timestamp) {
+      date = (json['createdAt'] as Timestamp).toDate();
+    } else {
+      date = DateTime.now();
+    }
+
+    return AppNotification(
+      id: id,
+      type: json['type'] ?? 'info',
+      title: json['title'] ?? '',
+      message: json['message'] ?? '',
+      createdAt: date,
+      isRead: json['isRead'] ?? false,
+      relatedId: json['relatedId'],
+    );
+  }
+}
+
 
 enum BayanihanCategory { generator, fuelPool, charging, businessSos }
 
