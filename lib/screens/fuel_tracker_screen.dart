@@ -263,7 +263,17 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         leading: IconButton(icon: const Icon(Icons.menu, color: Colors.white), onPressed: () => AppShell.scaffoldKey.currentState?.openDrawer()),
-        title: const Text('Bayanihan Fuel Tracker', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Row(
+          children: [
+            const Text('Bayanihan Fuel Tracker', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+              child: const Text('V2 - HARDENED', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
         actions: [
           IconButton(icon: const Icon(Icons.refresh, color: AppColors.primary), onPressed: _loadStations),
         ],
