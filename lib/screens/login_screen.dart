@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 24),
             const Icon(Icons.install_mobile, color: AppColors.primary, size: 48),
             const SizedBox(height: 16),
-            const Text('Experience Kuryente ⚡', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+            const Text('Experience Kuryentahin ⚡', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
             const SizedBox(height: 12),
             const Text(
               'Install the app for faster access to the live map and real-time community alerts.',
@@ -162,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
               
               // App Title
               Text(
-                'Kuryente ⚡',
+                'Kuryentahin ⚡',
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
