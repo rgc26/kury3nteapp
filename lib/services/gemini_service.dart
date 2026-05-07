@@ -79,11 +79,13 @@ Estimated monthly bill: ₱${estimatedMonthlyBill.toStringAsFixed(0)}.
 
     try {
       final prompt = '''
-Analyze this image of a home appliance. Return a JSON object with:
-"name": A concise name for the appliance (e.g., "Inverter Split-Type AC").
-"wattage": Typical wattage (int).
+Identify the home appliance in this image. You are an expert energy auditor in the Philippines.
+Return a JSON object with:
+"name": A concise name (e.g., "Gaming Laptop", "Inverter Ref", "LED TV").
+"wattage": Typical Meralco-standard wattage (int). Be accurate (e.g. Laptop is 45-65W, LED TV is 50-100W).
 "icon_key": One of these keys ONLY: "ac", "tv", "ref", "fan", "wash", "cook", "pc", "other".
 
+If multiple items are present, identify the most prominent one. 
 Response MUST be ONLY the JSON object.
 ''';
 

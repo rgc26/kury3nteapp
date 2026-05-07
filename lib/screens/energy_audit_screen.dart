@@ -140,8 +140,15 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
             ),
           ),
           const SizedBox(height: 32),
+
+          // 3. Makatipid Tips (AI) - MOVED TO TOP
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildAiTipsCard(),
+          ),
+          const SizedBox(height: 32),
           
-          // 3. Pumili ng Appliance (Responsive Grid)
+          // 4. Pumili ng Appliance (Responsive Grid)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: Text('Pumili ng Appliance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Outfit')),
@@ -189,11 +196,7 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
           ],
           const SizedBox(height: 32),
           
-          // 5. Makatipid Tips (AI)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _buildAiTipsCard(),
-          ),
+          ],
           const SizedBox(height: 40),
         ],
       ),
@@ -223,7 +226,7 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This appliance is already added.')));
         return;
       }
-      setState(() { a.isSelected = true; a.hoursPerDay = 4; });
+      setState(() { a.isSelected = true; a.hoursPerDay = 1; });
     },
     child: Container(
       padding: const EdgeInsets.all(12),
