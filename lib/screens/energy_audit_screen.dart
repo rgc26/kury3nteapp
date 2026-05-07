@@ -541,13 +541,27 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
 
   Future<void> _generateTips() async {
     setState(() => _loadingTips = true);
-    final profile = _appliances.where((a) => a.isSelected).map((a) => {'name': a.name, 'wattage': a.wattage, 'hoursPerDay': a.hoursPerDay}).toList();
-    if (profile.isEmpty) {
-      setState(() { _aiTips = 'Pumili muna ng appliances sa Calculator tab! 👆'; _loadingTips = false; });
-      return;
+    try {
+      final profile = _appliances.where((a) => a.isSelected).map((a) => {'name': a.name, 'wattage': a.wattage, 'hoursPerDay': a.hoursPerDay}).toList();
+      if (profile.isEmpty) {
+        setState(() { _aiTips = 'Pumili muna ng appliances sa Calculator tab! 👆'; _loadingTips = false; });
+        return;
+      }
+      
+      final tips = await _gemini.generateTips(
+        applianceProfile: profile, 
+        totalDailyKwh: _totalDailyKwh, 
+        estimatedMonthlyBill: _estimatedBill
+      );
+      
+      setState(() { _aiTips = tips; _loadingTips = false; });
+    } catch (e) {
+      debugPrint('AI Tip Generation Error: $e');
+      setState(() {
+        _aiTips = 'Unable to generate AI tips right now. Please check your API key or use the manual calculator.';
+        _loadingTips = false;
+      });
     }
-    final tips = await _gemini.generateTips(applianceProfile: profile, totalDailyKwh: _totalDailyKwh, estimatedMonthlyBill: _estimatedBill);
-    setState(() { _aiTips = tips; _loadingTips = false; });
   }
 
   Widget _buildGenerator() {
