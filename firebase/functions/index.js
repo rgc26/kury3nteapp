@@ -8,39 +8,57 @@ const db = admin.firestore();
 exports.verifyCluster = functions.firestore
   .document("outages/{docId}")
   .onWrite(async (change, context) => {
-    // If deleted, do nothing
     if (!change.after.exists) return null;
     
     const data = change.after.data();
+    const oldData = change.before.exists ? change.before.data() : null;
     
-    // Only verify unverified or nopower reports
-    if (data.status !== "unverified" && data.status !== "nopower") return null;
-
-    // We simulate the cluster threshold (3 points)
-    const currentScore = data.upvotes || 1;
-    
-    // If the score is >= 3, and it's currently unverified, upgrade to 'nopower' (Red Confirmed)
-    if (currentScore >= 3 && data.status === "unverified") {
-      console.log(`Outage ${context.params.docId} reached 3 votes. Verifying...`);
+    // Logic: If status just changed to 'nopower' (Verified Red Pin)
+    if (data.status === "nopower" && (!oldData || oldData.status !== "nopower")) {
+      console.log(`Outage ${context.params.docId} verified. Sending notification...`);
       
-      // Update the document to confirmed status
-      await change.after.ref.update({
-        status: "nopower",
-        isVerified: true
-      });
-      
-      // Here you would trigger FCM push notifications to nearby users
-      // Example pseudo-code:
-      /*
       const payload = {
         notification: {
-          title: "🔴 Verified Brownout!",
-          body: `A brownout has been confirmed in ${data.areaName || "your area"}.`
-        }
+          title: "🔴 Brownout Confirmed!",
+          body: `Isang brownout ang nakumpirma sa ${data.barangay || data.areaName || "iyong lugar"}. Maging handa! ⚡`,
+        },
+        topic: "outages"
       };
-      await admin.messaging().sendToTopic(data.barangay_topic, payload);
-      */
+
+      try {
+        await admin.messaging().send(payload);
+      } catch (error) {
+        console.error("FCM Outage Error:", error);
+      }
     }
     
+    return null;
+  });
+
+// Trigger when a fuel station status is updated
+exports.notifyFuelUpdate = functions.firestore
+  .document("fuel_stations/{stationId}")
+  .onUpdate(async (change, context) => {
+    const newData = change.after.data();
+    const oldData = change.before.data();
+
+    // Notify only if the status changed (e.g., from unknown to available)
+    if (newData.status !== oldData.status) {
+      console.log(`Fuel update for ${newData.name}. Sending notification...`);
+
+      const payload = {
+        notification: {
+          title: "⛽ Fuel Update!",
+          body: `${newData.name} is now: ${newData.status.toUpperCase()}. Check the map for prices!`,
+        },
+        topic: "fuel"
+      };
+
+      try {
+        await admin.messaging().send(payload);
+      } catch (error) {
+        console.error("FCM Fuel Error:", error);
+      }
+    }
     return null;
   });

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/outage_report.dart';
 import '../models/trust_system.dart';
 import '../models/meralco_schedule.dart';
@@ -12,6 +13,8 @@ import '../models/fuel_station.dart';
 class FirebaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  
+  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   
   User? get currentUser => _auth.currentUser;
   
@@ -60,7 +63,23 @@ class FirebaseService {
   }
 
   Future<void> init() async {
-    // No longer signing in anonymously automatically
+    // Request notification permissions for PWA
+    try {
+      NotificationSettings settings = await _fcm.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        debugPrint('✅ User granted notification permission');
+        // Subscribe to global topics for community alerts
+        await _fcm.subscribeToTopic('outages');
+        await _fcm.subscribeToTopic('fuel');
+      }
+    } catch (e) {
+      debugPrint('⚠️ FCM Init Error: $e');
+    }
   }
 
   Future<UserCredential?> signInWithGoogle() async {
