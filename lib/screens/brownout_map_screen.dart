@@ -161,6 +161,8 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
                   child: Row(
                     mainAxisSize: MainAxisSize.min, 
                     children: [
+                  Image.asset('assets/kuryentahin.png', height: 16),
+                  const SizedBox(width: 8),
                   _statItem('🔴', noP, 'Confirmed', AppColors.danger),
                   _divider(),
                   _statItem('🟡', unv, 'Unverified', AppColors.warning),

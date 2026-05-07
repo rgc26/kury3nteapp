@@ -45,7 +45,11 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
         
         return Scaffold(
           appBar: AppBar(
-            title: const Row(children: [Text('🤝 ', style: TextStyle(fontSize: 22)), Text('Bayanihan Board')]),
+            title: Row(children: [
+              Image.asset('assets/kuryentahin.png', height: 28),
+              const SizedBox(width: 8),
+              const Text('Bayanihan Board'),
+            ]),
             actions: [
               Row(children: [
                 const Text('Near Me', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),

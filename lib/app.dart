@@ -240,8 +240,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   currentAccountPicture: CircleAvatar(
                     backgroundColor: Colors.white,
                     backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-                    child: photoUrl == null ? Text(user?.displayName?[0] ?? user?.email?[0] ?? '?', 
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)) : null,
+                    child: photoUrl == null ? ClipOval(child: Image.asset('assets/kuryentahin.png')) : null,
                   ),
                   otherAccountsPictures: [
                     Image.asset('assets/kuryentahin.png', height: 40),

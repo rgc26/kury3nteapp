@@ -75,7 +75,11 @@ class _AlertsScreenState extends State<AlertsScreen> with SingleTickerProviderSt
           icon: const Icon(Icons.menu),
           onPressed: () => AppShell.scaffoldKey.currentState?.openDrawer(),
         ),
-        title: const Row(children: [Text('🔔 ', style: TextStyle(fontSize: 22)), Text('Smart Alerts')]),
+        title: Row(children: [
+          Image.asset('assets/kuryentahin.png', height: 28),
+          const SizedBox(width: 8),
+          const Text('Smart Alerts'),
+        ]),
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData)],
         bottom: TabBar(
           controller: _tabCtrl, 
