@@ -145,17 +145,32 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo or Icon
+              // Logo Image
               Container(
-                padding: const EdgeInsets.all(24),
+                width: 140,
+                height: 140,
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(20),
+                  color: AppColors.surface,
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withAlpha(50),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    )
+                  ],
                 ),
-                child: const Icon(
-                  Icons.flash_on,
-                  size: 80,
-                  color: AppColors.primary,
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/kuryentahin.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.flash_on,
+                      size: 80,
+                      color: AppColors.primary,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 32),

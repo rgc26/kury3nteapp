@@ -243,6 +243,9 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                     child: photoUrl == null ? Text(user?.displayName?[0] ?? user?.email?[0] ?? '?', 
                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)) : null,
                   ),
+                  otherAccountsPictures: [
+                    Image.asset('assets/kuryentahin.png', height: 40),
+                  ],
                   accountName: Text(user?.displayName ?? 'Kuryentahin User', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
                   accountEmail: Row(children: [
                     const Icon(Icons.stars, color: Colors.black54, size: 14),
