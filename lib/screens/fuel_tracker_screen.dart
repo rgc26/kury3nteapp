@@ -689,19 +689,18 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           },
         ),
         const SizedBox(height: 16),
-        SizedBox(width: double.infinity, height: 48, child: ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-          onPressed: () => _fetchInAppRoute(s.location),
-          icon: const Icon(Icons.directions, size: 20),
-          label: const Text('START IN-APP NAVIGATION', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+        SizedBox(width: double.infinity, height: 52, child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF4285F4), 
+            foregroundColor: Colors.white, 
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 4,
+          ),
+          onPressed: () => _openMaps(s.location),
+          icon: const Icon(Icons.map, size: 20),
+          label: const Text('OPEN IN GOOGLE MAPS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
         )),
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(child: _navBtn(Icons.map, 'Google Maps', const Color(0xFF4285F4), () => _openMaps(s.location))),
-          const SizedBox(width: 8),
-          Expanded(child: _navBtn(Icons.navigation, 'Waze', const Color(0xFF33CCFF), () => _openWaze(s.location))),
-        ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         // BAYANIHAN UPDATE BUTTON WITH GEOFENCING
         Builder(builder: (context) {
           final dist = Geolocator.distanceBetween(_userGps.latitude, _userGps.longitude, s.location.latitude, s.location.longitude);
