@@ -41,11 +41,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SnackBar(content: Text('Profile picture updated! 📸'), backgroundColor: AppColors.success),
           );
         }
+      } else {
+         if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Upload failed. Check your Cloudinary preset or Firestore rules.'), backgroundColor: AppColors.danger),
+          );
+        }
       }
     } catch (e) {
+      debugPrint('Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e'), backgroundColor: AppColors.danger),
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
         );
       }
     } finally {
