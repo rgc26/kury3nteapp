@@ -453,7 +453,13 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           color: color, 
           borderRadius: BorderRadius.circular(10), 
           border: Border.all(color: Colors.white, width: 2),
-          boxShadow: s.status != StationStatus.unknown ? [BoxShadow(color: color.withAlpha(100), blurRadius: 8, spreadRadius: 2)] : null,
+          boxShadow: s.status != StationStatus.unknown ? [
+            BoxShadow(
+              color: color.withAlpha(100), 
+              blurRadius: s.reportCount > 3 ? 15 : 8, 
+              spreadRadius: s.reportCount > 3 ? 4 : 2
+            )
+          ] : null,
         ),
         alignment: Alignment.center,
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -501,6 +507,36 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           ),
         ]),
         const SizedBox(height: 12),
+        // COMMUNITY VERIFICATION SECTION
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: s.status != StationStatus.unknown ? Colors.blue.withAlpha(20) : Colors.white.withAlpha(5),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: s.status != StationStatus.unknown ? Colors.blue.withAlpha(50) : Colors.white10),
+          ),
+          child: Row(children: [
+            Icon(
+              s.status != StationStatus.unknown ? Icons.verified : Icons.info_outline,
+              color: s.status != StationStatus.unknown ? Colors.blue : Colors.white24,
+              size: 14,
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(
+              s.status != StationStatus.unknown 
+                ? (s.reportCount > 1 
+                    ? '${s.reportCount} Bayanis agree this is ${s.statusText.toUpperCase()}' 
+                    : (s.reportedBy != null ? 'Verified by ${s.reportedBy} • ${_timeAgo(s.lastUpdated)}' : 'Community Verified'))
+                : 'No community reports yet. Be the first to verify!',
+              style: TextStyle(
+                color: s.status != StationStatus.unknown ? Colors.blue : Colors.white38,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            )),
+          ]),
+        ),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -555,6 +591,13 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   Future<void> _openWaze(LatLng loc) async {
     final url = Uri.parse('https://waze.com/ul?ll=${loc.latitude},${loc.longitude}&navigate=yes');
     if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
+  }
+
+  String _timeAgo(DateTime dt) {
+    final d = DateTime.now().difference(dt);
+    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
+    if (d.inHours < 24) return '${d.inHours}h ago';
+    return '${d.inDays}d ago';
   }
 
   Widget _buildPriceItem(String label, double price) => Container(

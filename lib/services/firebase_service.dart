@@ -31,18 +31,20 @@ class FirebaseService {
 
   /// Submit a fuel station report (status, prices, queue)
   Future<void> reportFuelStation(String stationId, StationStatus status, Map<String, double> prices) async {
-    final uid = currentUser?.uid;
-    if (uid == null) return;
+    final user = currentUser;
+    if (user == null) return;
+    
+    // Use displayName if available, otherwise a friendly fallback
+    final name = user.displayName ?? 'Bayani ${user.uid.substring(0, 4)}';
 
     final docRef = _db.collection('fuel_stations').doc(stationId);
     
-    // Increment reportCount and add user to reporters list to show community validation
     await docRef.set({
       'status': status.name,
       'prices': prices,
       'lastUpdated': FieldValue.serverTimestamp(),
-      'reportedBy': uid,
-      'reporters': FieldValue.arrayUnion([uid]),
+      'reportedBy': name,
+      'reporters': FieldValue.arrayUnion([user.uid]),
       'reportCount': FieldValue.increment(1),
     }, SetOptions(merge: true));
   }
