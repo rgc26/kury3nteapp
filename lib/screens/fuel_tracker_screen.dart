@@ -214,6 +214,8 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
                 prices: report.prices.isNotEmpty ? report.prices : base.prices,
                 lastUpdated: report.lastUpdated,
                 reportedBy: report.reportedBy,
+                reporters: report.reporters, // MERGE REPORTERS
+                reportCount: report.reportCount, // MERGE COUNT
               );
             } catch (_) { return base; }
           }).toList();
@@ -526,8 +528,8 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
             Expanded(child: Text(
               s.status != StationStatus.unknown 
                 ? (s.reportCount > 1 
-                    ? '${s.reportCount} Bayanis agree this is ${s.statusText.toUpperCase()}' 
-                    : (s.reportedBy != null ? 'Verified by ${s.reportedBy} • ${_timeAgo(s.lastUpdated)}' : 'Community Verified'))
+                    ? 'Verified by ${s.reportedBy ?? "Bayani"} and ${s.reportCount - 1} others • ${s.reportCount} Reports' 
+                    : 'Verified by ${s.reportedBy ?? "Bayani"} • ${_timeAgo(s.lastUpdated)}')
                 : 'No community reports yet. Be the first to verify!',
               style: TextStyle(
                 color: s.status != StationStatus.unknown ? Colors.blue : Colors.white38,
@@ -566,11 +568,33 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
           Expanded(child: _navBtn(Icons.navigation, 'Waze', const Color(0xFF33CCFF), () => _openWaze(s.location))),
         ]),
         const SizedBox(height: 10),
-        SizedBox(width: double.infinity, height: 44, child: OutlinedButton(
-          style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.primary, width: 1.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-          onPressed: () => _showReportDialog(s),
-          child: const Text('MAG-BAYANIHAN UPDATE', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 12)),
-        )),
+        // BAYANIHAN UPDATE BUTTON WITH GEOFENCING
+        Builder(builder: (context) {
+          final dist = Geolocator.distanceBetween(_userGps.latitude, _userGps.longitude, s.location.latitude, s.location.longitude);
+          final isNear = dist <= 500; // 500 meters limit
+          
+          return Column(children: [
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: OutlinedButton(
+                onPressed: isNear ? () => _showReportDialog(s) : null,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: isNear ? AppColors.primary : Colors.white12, width: 1.5),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(
+                  s.reporters.contains(_firebaseService.currentUser?.uid) ? 'UPDATE YOUR REPORT' : 'MAG-BAYANIHAN UPDATE', 
+                  style: TextStyle(color: isNear ? AppColors.primary : Colors.white24, fontWeight: FontWeight.w900, fontSize: 12)
+                ),
+              ),
+            ),
+            if (!isNear) Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('⚠️ Lumapit po muna (within 500m) para makapag-report', style: const TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+          ]);
+        }),
       ]),
     ));
   }
@@ -617,7 +641,7 @@ class _FuelTrackerScreenState extends State<FuelTrackerScreen> {
   );
 
   void _showReportDialog(FuelStation s) {
-    StationStatus tempStatus = s.status;
+    StationStatus tempStatus = s.status; // Restore pre-selection
     String queueTime = 'Walang pila';
     final Map<String, double> tempPrices = Map<String, double>.from(s.prices);
     

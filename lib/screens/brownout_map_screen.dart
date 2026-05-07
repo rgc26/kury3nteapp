@@ -360,32 +360,43 @@ class BrownoutMapScreenState extends State<BrownoutMapScreen> with SingleTickerP
             final isTooOld = DateTime.now().difference(o.reportedAt).inHours >= 24;
 
             if (o.status == OutageStatus.unverified || o.status == OutageStatus.nopower) {
-              return Row(
+              final dist = Geolocator.distanceBetween(_userGps.latitude, _userGps.longitude, o.location.latitude, o.location.longitude);
+              final isNear = dist <= 300;
+
+              return Column(
                 children: [
-                  if (o.status == OutageStatus.unverified)
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: (hasReported || isTooOld) ? null : () => _report(o),
-                        icon: Icon(isTooOld ? Icons.timer_off : (hasReported ? Icons.check : Icons.add), size: 16),
-                        label: Text(isTooOld ? 'Expired' : (hasReported ? 'You reported' : 'Me too')),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.warning,
-                          disabledForegroundColor: AppColors.textMuted,
+                  Row(
+                    children: [
+                      if (o.status == OutageStatus.unverified)
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: (hasReported || isTooOld || !isNear) ? null : () => _report(o),
+                            icon: Icon(isTooOld ? Icons.timer_off : (hasReported ? Icons.check : Icons.add), size: 16),
+                            label: Text(isTooOld ? 'Expired' : (hasReported ? 'You reported' : 'Me too')),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.warning,
+                              disabledForegroundColor: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      if (o.status == OutageStatus.unverified) const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: (hasRestored || isTooOld || !isNear) ? null : () => _kuryenteNa(o),
+                          icon: Icon(isTooOld ? Icons.timer_off : (hasRestored ? Icons.check : Icons.lightbulb), size: 16),
+                          label: Text(isTooOld ? 'Expired' : (hasRestored ? 'Voted Restored' : 'Kuryente Na!')),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success, 
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: AppColors.success.withAlpha(100),
+                          ),
                         ),
                       ),
-                    ),
-                  if (o.status == OutageStatus.unverified) const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: (hasRestored || isTooOld) ? null : () => _kuryenteNa(o),
-                      icon: Icon(isTooOld ? Icons.timer_off : (hasRestored ? Icons.check : Icons.lightbulb), size: 16),
-                      label: Text(isTooOld ? 'Expired' : (hasRestored ? 'Voted Restored' : 'Kuryente Na!')),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success, 
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: AppColors.success.withAlpha(100),
-                      ),
-                    ),
+                    ],
+                  ),
+                  if (!isNear) Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text('⚠️ You must be within 300m to verify', style: const TextStyle(color: AppColors.warning, fontSize: 10, fontWeight: FontWeight.bold)),
                   ),
                 ],
               );
