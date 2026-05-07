@@ -12,9 +12,16 @@ class GeminiService {
   String? _apiKey;
 
   GeminiService() {
-    final envKey = dotenv.env['GEMINI_API_KEY'];
-    if (envKey != null && envKey.isNotEmpty) {
-      configure(envKey);
+    // 1. Try Environment Variable first (Safe for Production/Vercel)
+    const envVarKey = String.fromEnvironment('GEMINI_API_KEY');
+    
+    // 2. Try DotEnv fallback (Convenient for Local Dev)
+    final dotEnvKey = dotenv.maybeGet('GEMINI_API_KEY');
+
+    final finalKey = (envVarKey.isNotEmpty) ? envVarKey : dotEnvKey;
+
+    if (finalKey != null && finalKey.isNotEmpty) {
+      configure(finalKey);
     }
   }
 
@@ -23,7 +30,7 @@ class GeminiService {
   void configure(String apiKey) {
     _apiKey = apiKey;
     _model = GenerativeModel(
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       apiKey: apiKey,
     );
   }
