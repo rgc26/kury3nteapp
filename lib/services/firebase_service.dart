@@ -300,7 +300,12 @@ class FirebaseService {
     return _db.collection('bayanihan').doc(postId).collection('comments')
       .orderBy('createdAt', descending: false)
       .snapshots()
-      .map((snap) => snap.docs.map((doc) => BayanihanComment.fromJson(doc.data(), doc.id)).toList());
+      .map((snap) {
+        // Auto-repair: sync commentCount with actual comment count
+        final actualCount = snap.docs.length;
+        _db.collection('bayanihan').doc(postId).update({'commentCount': actualCount});
+        return snap.docs.map((doc) => BayanihanComment.fromJson(doc.data(), doc.id)).toList();
+      });
   }
 
   // --- Notifications ---
