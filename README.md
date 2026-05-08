@@ -165,19 +165,15 @@ Cloud Functions handle server-side operations like Meralco schedule scraping.
 ---
 
 ## 👨‍💻 Author
-
-**Romark Cacho**  
-BS Information Technology  
-Gordon College
+  
+**TEAM NEXUS**
 
 ---
 
-## 📄 License
 
-This project is developed as a capstone requirement for academic purposes.
 
 ---
 
 <p align="center">
-  <strong>⚡ Kuryentahin — Para sa Bayan, Para sa Bayanihan ⚡</strong>
+  <strong>⚡ Kuryentahin — ng mga trentahin na magtitipid ng konti ⚡</strong>
 </p>
