@@ -841,17 +841,23 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
+                  final int watts = (data['wattage'] is int) 
+                      ? data['wattage'] 
+                      : int.tryParse(data['wattage'].toString()) ?? 100;
                   setState(() {
                     _appliances.add(Appliance(
-                      name: data['name'],
+                      name: data['name'] ?? 'Unknown Appliance',
                       icon: iconData,
-                      wattage: data['wattage'],
-                      defaultWattage: data['wattage'],
+                      wattage: watts,
+                      defaultWattage: watts,
                       isSelected: true,
                       hoursPerDay: 1,
                     ));
                   });
                   Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('✅ ${data['name']} added to calculator!')),
+                  );
                 },
                 child: const Text('Add to Calculator'),
               ),
