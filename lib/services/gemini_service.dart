@@ -96,10 +96,14 @@ Estimated monthly bill: ₱${estimatedMonthlyBill.toStringAsFixed(0)}.
   }
 
   /// Analyze an image of an appliance and suggest name, wattage, and icon.
-  Future<Map<String, dynamic>?> analyzeApplianceImage(List<int> imageBytes) async {
+  /// Returns {'data': result} on success or {'error': message} on failure.
+  Future<Map<String, dynamic>> analyzeApplianceImage(List<int> imageBytes, {String? filePath}) async {
     if (!isConfigured || _visionModel == null) {
-      debugPrint('Gemini Scan Error: Service not configured. isConfigured=$isConfigured, visionModel=${_visionModel != null}');
-      return null;
+      return {'error': 'AI not configured. API key missing.'};
+    }
+
+    if (imageBytes.isEmpty) {
+      return {'error': 'Image is empty. Try taking the photo again.'};
     }
 
     try {
@@ -124,46 +128,55 @@ Return ONLY a JSON object:
 }
 ''';
 
-      debugPrint('Gemini: Starting image analysis... (Bytes: ${imageBytes.length})');
-      if (imageBytes.isEmpty) {
-        debugPrint('Gemini Error: Image bytes are empty');
-        return null;
+      // Auto-detect MIME type from file bytes
+      String mimeType = 'image/jpeg';
+      if (imageBytes.length > 4) {
+        // PNG starts with 137 80 78 71
+        if (imageBytes[0] == 137 && imageBytes[1] == 80 && imageBytes[2] == 78 && imageBytes[3] == 71) {
+          mimeType = 'image/png';
+        }
+        // WebP starts with RIFF....WEBP
+        if (imageBytes[0] == 82 && imageBytes[1] == 73 && imageBytes[2] == 70 && imageBytes[3] == 70) {
+          mimeType = 'image/webp';
+        }
       }
+
+      debugPrint('Gemini: Sending image (${imageBytes.length} bytes, $mimeType)');
 
       final response = await _visionModel!.generateContent([
         Content.multi([
           TextPart(prompt),
-          DataPart('image/jpeg', Uint8List.fromList(imageBytes)),
+          DataPart(mimeType, Uint8List.fromList(imageBytes)),
         ])
       ]);
 
       final text = response.text;
       debugPrint('Gemini Raw Response: $text');
       if (text == null || text.isEmpty) {
-        debugPrint('Gemini Error: Empty response from API');
-        return null;
+        return {'error': 'AI returned empty response. Try a clearer photo.'};
       }
 
       // Aggressive JSON extraction: Find first { and last }
       final int start = text.indexOf('{');
       final int end = text.lastIndexOf('}');
       if (start == -1 || end == -1) {
-        debugPrint('Gemini Error: No JSON object found in response: $text');
-        return null;
+        return {'error': 'AI could not identify. Response: ${text.substring(0, text.length.clamp(0, 100))}'};
       }
       
       final String jsonStr = text.substring(start, end + 1);
       debugPrint('Gemini Extracted JSON: $jsonStr');
-      final Map<String, dynamic> data = jsonDecode(jsonStr);
+      final Map<String, dynamic> parsed = jsonDecode(jsonStr);
       
       return {
-        'name': data['name'] ?? 'Unknown Appliance',
-        'wattage': (data['wattage'] is int) ? data['wattage'] : int.tryParse(data['wattage']?.toString() ?? '0') ?? 0,
-        'icon_key': data['icon_key'] ?? 'other',
+        'data': {
+          'name': parsed['name'] ?? 'Unknown Appliance',
+          'wattage': (parsed['wattage'] is int) ? parsed['wattage'] : int.tryParse(parsed['wattage']?.toString() ?? '0') ?? 100,
+          'icon_key': parsed['icon_key'] ?? 'other',
+        }
       };
     } catch (e) {
       debugPrint('Gemini Analysis Error: $e');
-      return null;
+      return {'error': 'AI Error: ${e.toString().substring(0, e.toString().length.clamp(0, 150))}'};
     }
   }
 

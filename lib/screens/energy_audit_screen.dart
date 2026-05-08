@@ -766,7 +766,7 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
     // Check if Gemini is configured first
     if (!_gemini.isConfigured) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('⚠️ AI not configured. Check your Gemini API key in .env file.'),
+        content: Text('⚠️ AI not configured. Check your Gemini API key.'),
         backgroundColor: Colors.orange,
       ));
       return;
@@ -790,12 +790,14 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
     
     setState(() => _isScanning = false);
 
-    if (result != null) {
-      _showScanResultModal(result);
+    if (result.containsKey('data')) {
+      _showScanResultModal(result['data']);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Could not identify appliance. Try a clearer photo or add manually.'),
-        duration: Duration(seconds: 4),
+      final errorMsg = result['error'] ?? 'Unknown error';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('❌ $errorMsg'),
+        backgroundColor: Colors.red.shade800,
+        duration: const Duration(seconds: 6),
       ));
     }
   }
