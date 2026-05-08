@@ -67,12 +67,11 @@ class _BayanihanScreenState extends State<BayanihanScreen> with SingleTickerProv
             _postList(BayanihanCategory.charging, posts),
             _postList(BayanihanCategory.businessSos, posts),
           ]),
-          floatingActionButton: FloatingActionButton.extended(
+          floatingActionButton: FloatingActionButton(
             onPressed: _createPost,
-            icon: const Icon(Icons.add),
-            label: const Text('Post'),
             backgroundColor: AppColors.primary,
             foregroundColor: AppColors.background,
+            child: const Icon(Icons.add),
           ),
         );
       }
