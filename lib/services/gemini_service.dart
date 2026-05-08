@@ -13,7 +13,7 @@ class GeminiService {
   String? _apiKey;
 
   // Fallback key for local dev when .env can't be loaded as web asset
-  static const String _fallbackKey = 'AIzaSyA5W-w6nqZdfsI5aacg9wCrDnb4XI3cBWQ';
+  static const String _fallbackKey = 'REMOVED_LEAKED_KEY';
 
   GeminiService() {
     // 1. Try Environment Variable first (Safe for Production/Vercel)
