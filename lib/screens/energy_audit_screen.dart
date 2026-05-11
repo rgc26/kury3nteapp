@@ -286,7 +286,10 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted),
                   decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.zero, border: InputBorder.none),
-                  onChanged: (v) => setState(() => a.wattage = int.tryParse(v) ?? a.defaultWattage),
+                  onChanged: (v) {
+                    final val = int.tryParse(v);
+                    if (val != null) setState(() => a.wattage = val);
+                  },
                   controller: TextEditingController(text: '${a.wattage}')..selection = TextSelection.fromPosition(TextPosition(offset: '${a.wattage}'.length)),
                 ),
               ),
@@ -294,7 +297,7 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
             ]),
           ])),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('₱${(a.monthlyKwh * MeralcoRates.ratePerKwh).toStringAsFixed(2)}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 14, fontFamily: 'Outfit')),
+            Text('₱${(a.monthlyKwh * MeralcoRates.getEffectiveRate(_totalMonthlyKwh)).toStringAsFixed(2)}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 14, fontFamily: 'Outfit')),
             const Text('per month', style: TextStyle(fontSize: 8, color: AppColors.textMuted, fontWeight: FontWeight.w700)),
           ]),
           const SizedBox(width: 8),
@@ -314,20 +317,23 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(color: Colors.black.withOpacity(0.3), borderRadius: BorderRadius.circular(10)),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              _roundBtn(Icons.remove, () => setState(() => a.hoursPerDay = (a.hoursPerDay - 1).clamp(0, 24))),
+              _roundBtn(Icons.remove, () => setState(() => a.hoursPerDay = (a.hoursPerDay - 0.5).clamp(0, 24))),
               SizedBox(
                 width: 30,
                 child: TextField(
                   textAlign: TextAlign.center,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
                   style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, fontFamily: 'Outfit'),
                   decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.zero, border: InputBorder.none),
-                  onChanged: (v) => setState(() => a.hoursPerDay = double.tryParse(v) ?? a.hoursPerDay),
-                  controller: TextEditingController(text: a.hoursPerDay.toInt().toString())..selection = TextSelection.fromPosition(TextPosition(offset: a.hoursPerDay.toInt().toString().length)),
+                  onChanged: (v) {
+                    final val = double.tryParse(v);
+                    if (val != null) setState(() => a.hoursPerDay = val);
+                  },
+                  controller: TextEditingController(text: a.hoursPerDay % 1 == 0 ? a.hoursPerDay.toInt().toString() : a.hoursPerDay.toString())..selection = TextSelection.fromPosition(TextPosition(offset: (a.hoursPerDay % 1 == 0 ? a.hoursPerDay.toInt().toString() : a.hoursPerDay.toString()).length)),
                 ),
               ),
-              _roundBtn(Icons.add, () => setState(() => a.hoursPerDay = (a.hoursPerDay + 1).clamp(0, 24))),
+              _roundBtn(Icons.add, () => setState(() => a.hoursPerDay = (a.hoursPerDay + 0.5).clamp(0, 24))),
             ]),
           ),
         ]),

@@ -36,19 +36,16 @@ class MeralcoRates {
   // Total effective rate per kWh (generation + transmission + distribution + others)
   static const double ratePerKwh = 11.8569; // approximate Meralco rate
 
-  // For tiered calculation (lifeline rates for low consumption)
+  static double getEffectiveRate(double monthlyKwh) {
+    if (monthlyKwh <= 20) return 4.1326;
+    if (monthlyKwh <= 50) return 5.2936;
+    if (monthlyKwh <= 100) return 8.3210;
+    if (monthlyKwh <= 200) return 10.2845;
+    return ratePerKwh;
+  }
+
   static double calculateMonthlyBill(double monthlyKwh) {
-    if (monthlyKwh <= 20) {
-      return monthlyKwh * 4.1326; // Lifeline subsidy
-    } else if (monthlyKwh <= 50) {
-      return monthlyKwh * 5.2936;
-    } else if (monthlyKwh <= 100) {
-      return monthlyKwh * 8.3210;
-    } else if (monthlyKwh <= 200) {
-      return monthlyKwh * 10.2845;
-    } else {
-      return monthlyKwh * ratePerKwh;
-    }
+    return monthlyKwh * getEffectiveRate(monthlyKwh);
   }
 
   static String getRateTier(double monthlyKwh) {
