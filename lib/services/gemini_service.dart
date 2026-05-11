@@ -12,9 +12,6 @@ class GeminiService {
   GenerativeModel? _visionModel;
   String? _apiKey;
 
-  // Fallback key for local dev when .env can't be loaded as web asset
-  static const String _fallbackKey = 'REMOVED_LEAKED_KEY';
-
   GeminiService() {
     // 1. Try Environment Variable first (Safe for Production/Vercel)
     const envVarKey = String.fromEnvironment('GEMINI_API_KEY');
@@ -27,14 +24,14 @@ class GeminiService {
       }
     } catch (_) {}
 
-    // 3. Use fallback key if neither source provides one
-    final finalKey = (envVarKey.isNotEmpty) ? envVarKey : (dotEnvKey ?? _fallbackKey);
+    // 3. Use whichever source provides a key (no hardcoded fallback)
+    final finalKey = (envVarKey.isNotEmpty) ? envVarKey : (dotEnvKey ?? '');
 
     if (finalKey.isNotEmpty) {
       configure(finalKey);
       debugPrint('GeminiService: API key loaded successfully (${finalKey.substring(0, 8)}...)');
     } else {
-      debugPrint('GeminiService: WARNING - No API key found! Image scan will not work.');
+      debugPrint('GeminiService: WARNING - No API key found! Set it in Settings or .env file.');
     }
   }
 
