@@ -105,23 +105,27 @@ Estimated monthly bill: ₱${estimatedMonthlyBill.toStringAsFixed(0)}.
 
     try {
       final prompt = '''
-You are an expert Home Appliance Scanner for an energy audit app.
-Analyze this image and identify the appliance. You MUST provide a best guess.
+You are an expert Home Appliance Scanner for an energy audit app in the Philippines.
+Analyze this image and identify the appliance accurately.
 
-Categories to look for:
-- "pc": Laptops (MacBook, Windows), Desktop PC, Monitor.
-- "fan": Desk fans, Stand fans, Ceiling fans.
-- "tv": LED TV, Smart TV.
-- "ref": Refrigerator, Freezer.
-- "ac": Window AC, Split-type AC.
-- "cook": Rice cooker, Microwave, Oven.
-- "wash": Washing machine, Dryer.
+Categories and typical Wattage hints:
+- "pc": Laptops (30-65W), Desktop PC (150-300W), Monitor (20-40W).
+- "fan": 
+    * Clip Fans/Small Wall Fans (12-25W)
+    * Desk Fans (35-50W)
+    * Stand Fans (50-75W)
+    * Ceiling Fans (50-100W)
+- "tv": LED TV (30-100W depending on size).
+- "ref": Refrigerator (100-200W), Inverter Ref (lower avg).
+- "ac": Window AC (700-1500W), Split-type AC (800-2000W).
+- "cook": Rice cooker (400-800W), Microwave (700-1200W), Induction Cooker (1000-2000W).
+- "wash": Washing machine (300-500W), Spin Dryer (150-300W).
 
 Return ONLY a JSON object:
 {
-  "name": "Specific Name (e.g., Slim Laptop)",
-  "wattage": 65, 
-  "icon_key": "pc"
+  "name": "Specific Name (e.g., 6-Blade Clip Fan)",
+  "wattage": 15, 
+  "icon_key": "fan"
 }
 ''';
 
