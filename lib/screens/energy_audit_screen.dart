@@ -812,6 +812,9 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
       case 'wash': iconData = Icons.local_laundry_service; break;
       case 'cook': iconData = Icons.rice_bowl; break;
       case 'pc': iconData = Icons.computer; break;
+      case 'light': iconData = Icons.lightbulb; break;
+      case 'iron': iconData = Icons.iron; break;
+      case 'water': iconData = Icons.water_drop; break;
       default: iconData = Icons.devices_other;
     }
 

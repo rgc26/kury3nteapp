@@ -105,27 +105,31 @@ Estimated monthly bill: ₱${estimatedMonthlyBill.toStringAsFixed(0)}.
 
     try {
       final prompt = '''
-You are an expert Home Appliance Scanner for an energy audit app in the Philippines.
-Analyze this image and identify the appliance accurately.
+You are a Universal Home Appliance Scanner for an energy audit app in the Philippines.
+Your goal is to identify ANY household appliance from an image and estimate its power consumption.
 
-Categories and typical Wattage hints:
-- "pc": Laptops (30-65W), Desktop PC (150-300W), Monitor (20-40W).
-- "fan": 
-    * Clip Fans/Small Wall Fans (12-25W)
-    * Desk Fans (35-50W)
-    * Stand Fans (50-75W)
-    * Ceiling Fans (50-100W)
-- "tv": LED TV (30-100W depending on size).
-- "ref": Refrigerator (100-200W), Inverter Ref (lower avg).
-- "ac": Window AC (700-1500W), Split-type AC (800-2000W).
-- "cook": Rice cooker (400-800W), Microwave (700-1200W), Induction Cooker (1000-2000W).
-- "wash": Washing machine (300-500W), Spin Dryer (150-300W).
+Instructions:
+1. Identify the appliance name (be specific, e.g., "Inverter Refrigerator", "6-Blade Clip Fan", "Gaming PC").
+2. Look for any labels or stickers in the image that show Wattage (W). If found, use that value.
+3. If no label is visible, estimate the typical wattage based on common Philippine household standards.
+4. Categorize it into one of these standard icon_keys:
+   - "ac": Airconditioners (Window, Split, Portable)
+   - "tv": Televisions, Monitors
+   - "ref": Refrigerators, Freezers, Chillers
+   - "fan": All types of fans (Stand, Desk, Wall, Clip, Ceiling)
+   - "wash": Washing machines, Dryers
+   - "cook": Rice cookers, Ovens, Microwaves, Induction, Air fryers
+   - "pc": Laptops, Desktop CPUs
+   - "light": Bulbs, Lamps, LED strips
+   - "iron": Flat irons, Steamers
+   - "water": Water dispensers, Electric kettles, Water pumps
+   - "other": Anything else (Vacuum, Charger, Tools, etc.)
 
 Return ONLY a JSON object:
 {
-  "name": "Specific Name (e.g., 6-Blade Clip Fan)",
-  "wattage": 15, 
-  "icon_key": "fan"
+  "name": "Full Name of Appliance",
+  "wattage": 000, 
+  "icon_key": "category_from_list"
 }
 ''';
 
