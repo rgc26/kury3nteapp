@@ -44,7 +44,7 @@ class GeminiService {
     _apiKey = apiKey;
     // Text model with low temperature for tips
     _model = GenerativeModel(
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         temperature: 0.1,
@@ -54,7 +54,7 @@ class GeminiService {
     );
     // Vision model with higher temperature for image recognition
     _visionModel = GenerativeModel(
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         temperature: 0.4,
