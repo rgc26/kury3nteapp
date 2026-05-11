@@ -53,6 +53,44 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkDeviceLock();
       _initLiveAlerts();
+      _showPwaInstallPrompt();
+    });
+  }
+
+  void _showPwaInstallPrompt() {
+    if (!mounted) return;
+    
+    // Only show on Web and if not already dismissed
+    if (widget.storage.isPwaPromptDismissed()) return;
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(children: [Icon(Icons.install_mobile, color: AppColors.primary), SizedBox(width: 10), Text('Install App?', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold))]),
+          content: const Text('Para sa mas mabilis na experience at mas accurate na Camera AI, i-install ang Kuryente App sa iyong phone! ⚡'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                widget.storage.setPwaPromptDismissed(true);
+                Navigator.pop(ctx);
+              },
+              child: const Text('Maybe Later', style: TextStyle(color: AppColors.textMuted)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                AppShell.scaffoldKey.currentState?.openDrawer();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              child: const Text('Install Now', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
     });
   }
 

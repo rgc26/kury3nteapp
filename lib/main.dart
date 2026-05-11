@@ -41,6 +41,17 @@ class KuryenteApp extends StatelessWidget {
       title: 'Kuryentahin ⚡',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
+      builder: (context, child) {
+        return Container(
+          color: const Color(0xFF0D0B09), // Dark background for the sides
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: child,
+            ),
+          ),
+        );
+      },
       home: StreamBuilder<User?>(
         stream: firebaseService.authStateChanges,
         builder: (context, snapshot) {
