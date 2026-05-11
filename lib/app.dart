@@ -9,6 +9,7 @@ import 'screens/alerts_screen.dart';
 import 'screens/bayanihan_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/history_screen.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'services/firebase_service.dart';
 import 'models/outage_report.dart';
 
@@ -60,10 +61,26 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void _showPwaInstallPrompt() {
     if (!mounted) return;
     
-    // Only show on Web and if not already dismissed
+    // 1. Only show on Web
+    if (!kIsWeb) return;
+
+    // 2. Never show if already dismissed
     if (widget.storage.isPwaPromptDismissed()) return;
 
-    Future.delayed(const Duration(seconds: 3), () {
+    // 3. Detect if already in "Standalone" mode (already installed and opened from home screen)
+    // We use a small JS check via the context
+    final bool isStandalone = js.context.hasProperty('matchMedia') && 
+        (js.context.callMethod('matchMedia', ['(display-mode: standalone)']) as js.JsObject)['matches'] == true;
+    
+    if (isStandalone) return;
+
+    // 4. Only show for Mobile Browsers (Android/iOS) to avoid bugging Desktop users
+    final TargetPlatform platform = Theme.of(context).platform;
+    final bool isMobile = platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+    
+    if (!isMobile) return;
+
+    Future.delayed(const Duration(seconds: 5), () {
       if (!mounted) return;
       showDialog(
         context: context,
