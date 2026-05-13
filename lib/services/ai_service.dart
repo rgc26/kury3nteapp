@@ -11,8 +11,8 @@ class AiService {
   String? _apiKey;
   final String _baseUrl = 'https://openrouter.ai/api/v1';
   
-  // Use the most common free alias for Gemini 2.0 Flash
-  final String _defaultModel = 'google/gemini-2.0-flash:free';
+  // Use the highly compatible Gemini 1.5 Pro (Free)
+  final String _defaultModel = 'google/gemini-pro-1.5:free';
 
   AiService() {
     // 1. Try Environment Variable first (Safe for Production/Vercel)
@@ -74,8 +74,6 @@ Estimated monthly bill: ₱${estimatedMonthlyBill.toStringAsFixed(0)}.
         headers: {
           'Authorization': 'Bearer $_apiKey',
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://kuryente.app', // Required for OpenRouter rankings
-          'X-Title': 'Kuryente App',
         },
         body: jsonEncode({
           'model': _defaultModel,
@@ -146,8 +144,6 @@ Return ONLY a JSON object:
         headers: {
           'Authorization': 'Bearer $_apiKey',
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://kuryente.app',
-          'X-Title': 'Kuryente App',
         },
         body: jsonEncode({
           'model': _defaultModel,
