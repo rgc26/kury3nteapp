@@ -6,7 +6,7 @@ import '../theme/app_colors.dart';
 import '../models/app_models.dart';
 import '../data/appliances_data.dart';
 import '../services/storage_service.dart';
-import '../services/gemini_service.dart';
+import '../services/ai_service.dart';
 
 class EnergyAuditScreen extends StatefulWidget {
   final StorageService storage;
@@ -18,7 +18,7 @@ class EnergyAuditScreen extends StatefulWidget {
 class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
   List<Appliance> _appliances = [];
-  final _gemini = GeminiService();
+  final _aiService = AiService();
   String _aiTips = '';
   bool _loadingTips = false;
   bool _isScanning = false;
@@ -32,7 +32,7 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
     super.initState();
     _tabCtrl = TabController(length: 3, vsync: this);
     _appliances = getDefaultAppliances();
-    // Gemini key is now loaded from .env automatically in the service constructor
+    // AI key is now loaded from .env automatically in the service constructor
   }
 
   @override
@@ -42,9 +42,9 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
     super.dispose();
   }
 
-  Future<void> _loadGeminiKey() async {
-    final key = await widget.storage.getGeminiApiKey();
-    if (key != null && key.isNotEmpty) _gemini.configure(key);
+  Future<void> _loadAiKey() async {
+    final key = await widget.storage.getAiApiKey();
+    if (key != null && key.isNotEmpty) _aiService.configure(key);
   }
 
   double get _totalDailyKwh => _appliances.where((a) => a.isSelected).fold(0, (s, a) => s + a.dailyKwh);
@@ -518,7 +518,7 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Row(children: [Icon(Icons.auto_awesome, color: AppColors.primary, size: 20), SizedBox(width: 8), Text('Makatipid Tips', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16))]),
           const SizedBox(height: 8),
-          Text(_gemini.isConfigured ? 'AI-powered personalized tips gamit ang Gemini' : 'Pre-built energy saving tips (set Gemini API key sa Settings para sa personalized tips)', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          Text(_aiService.isConfigured ? 'AI-powered personalized tips gamit ang OpenRouter' : 'Pre-built energy saving tips (set OpenRouter API key sa Settings para sa personalized tips)', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           const SizedBox(height: 12),
           SizedBox(width: double.infinity, child: ElevatedButton.icon(
             onPressed: _loadingTips ? null : _generateTips,
@@ -536,11 +536,11 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
       ],
       // Gemini key input
       const SizedBox(height: 20),
-      Text('🔑 Gemini API Key', style: Theme.of(context).textTheme.titleMedium),
+      Text('🔑 OpenRouter API Key', style: Theme.of(context).textTheme.titleMedium),
       const SizedBox(height: 8),
-      TextField(decoration: const InputDecoration(hintText: 'Paste your Gemini API key here', prefixIcon: Icon(Icons.key, size: 18)),
+      TextField(decoration: const InputDecoration(hintText: 'Paste your OpenRouter API key here', prefixIcon: Icon(Icons.key, size: 18)),
         obscureText: true,
-        onSubmitted: (v) async { _gemini.configure(v); await widget.storage.saveGeminiApiKey(v);
+        onSubmitted: (v) async { _aiService.configure(v); await widget.storage.saveAiApiKey(v);
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ API key saved!'))); setState(() {}); }),
     ]));
   }
@@ -554,7 +554,7 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
         return;
       }
       
-      final tips = await _gemini.generateTips(
+      final tips = await _aiService.generateTips(
         applianceProfile: profile, 
         totalDailyKwh: _totalDailyKwh, 
         estimatedMonthlyBill: _estimatedBill
@@ -769,10 +769,10 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
   );
 
   Future<void> _scanAppliance() async {
-    // Check if Gemini is configured first
-    if (!_gemini.isConfigured) {
+    // Check if AI is configured first
+    if (!_aiService.isConfigured) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('⚠️ AI not configured. Check your Gemini API key.'),
+        content: Text('⚠️ AI not configured. Check your OpenRouter API key.'),
         backgroundColor: Colors.orange,
       ));
       return;
@@ -792,7 +792,7 @@ class _EnergyAuditScreenState extends State<EnergyAuditScreen> with SingleTicker
     
     final bytes = await photo.readAsBytes();
     debugPrint('Scan: Captured image with ${bytes.length} bytes');
-    final result = await _gemini.analyzeApplianceImage(bytes);
+    final result = await _aiService.analyzeApplianceImage(bytes);
     
     setState(() => _isScanning = false);
 

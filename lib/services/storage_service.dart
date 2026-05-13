@@ -14,7 +14,7 @@ class StorageService {
   static const String _bayanihanKey = 'bayanihan_posts';
   static const String _settingsKey = 'app_settings';
   static const String _pwaPromptDismissedKey = 'pwa_prompt_dismissed';
-  static const String _geminiKeyKey = 'gemini_api_key';
+  static const String _aiKeyKey = 'ai_api_key';
 
   late SharedPreferences _prefs;
 
@@ -107,13 +107,13 @@ class StorageService {
     await _prefs.setString(_bayanihanKey, json.encode(posts.map((e) => e.toJson()).toList()));
   }
 
-  // --- Gemini API Key ---
-  Future<String?> getGeminiApiKey() async {
-    return _prefs.getString(_geminiKeyKey);
+  // --- AI API Key ---
+  Future<String?> getAiApiKey() async {
+    return _prefs.getString(_aiKeyKey);
   }
 
-  Future<void> saveGeminiApiKey(String key) async {
-    await _prefs.setString(_geminiKeyKey, key);
+  Future<void> saveAiApiKey(String key) async {
+    await _prefs.setString(_aiKeyKey, key);
   }
 
   // --- Settings ---

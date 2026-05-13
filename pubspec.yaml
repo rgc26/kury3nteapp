@@ -17,9 +17,9 @@ dependencies:
   shared_preferences: ^2.3.4
   provider: ^6.1.2
   fl_chart: ^0.69.2
-  google_generative_ai: ^0.4.6
   url_launcher: ^6.3.1
   intl: ^0.20.2
+
   geolocator: ^13.0.2
   geolocator_web: ^4.1.1
   firebase_core: ^4.7.0
