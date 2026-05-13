@@ -12,7 +12,7 @@ class AiService {
   final String _baseUrl = 'https://openrouter.ai/api/v1';
   
   // Use the most stable free variant: Gemini 1.5 Flash
-  final String _defaultModel = 'google/gemini-flash-1.5:free';
+  final String _defaultModel = 'google/gemma-4-26b-a4b-it:free';
 
   AiService() {
     // 1. Try Environment Variable first (Safe for Production/Vercel)
